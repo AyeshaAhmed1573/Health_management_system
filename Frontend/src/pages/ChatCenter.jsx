@@ -6,9 +6,9 @@ export default function ChatCenterPage() {
 
   const handleNavigate = (screen, data) => {
     if (screen === "ai-chat") {
-      navigate("/ai-chat", { state: { initialPrompt } });
+      navigate("/ai-chat", { state: { initialPrompt: data } });
     } else if (screen === "doctor-chat" && data) {
-      navigate("/doctor-chat", { state: { doctor } });
+      navigate("/doctor-chat", { state: { doctor: data } });
     } else if (screen === "doctors") {
       navigate("/doctors");
     } else if (screen === "symptoms") {

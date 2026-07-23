@@ -39,7 +39,7 @@ const appointmentSchema = new mongoose.Schema(
     },
     reason: { type: String, trim: true },         // reason for visit
     symptoms: [{ type: String, trim: true }],
-    meetingLink: { type: String },                // for online consultations
+    // meetingLink: { type: String },                // for online consultations
     consultationNotes: { type: String },          // doctor fills after appointment
     fee: { type: Number },
     paymentStatus: {
