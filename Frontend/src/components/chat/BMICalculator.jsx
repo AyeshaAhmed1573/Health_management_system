@@ -151,7 +151,7 @@ export function BMICalculator() {
                 <div className="flex items-center gap-6">
                   <div className="relative w-36 h-36 flex-shrink-0">
                     <ResponsiveContainer width="100%" height="100%">
-                      <RadialBarChart cx="50%" cy="60%" innerRadius="62%" outerRadius="80%" startAngle={180} endAngle={0} data={[{ value }]}>
+                      <RadialBarChart cx="50%" cy="60%" innerRadius="62%" outerRadius="80%" startAngle={180} endAngle={0} data={[{ value: gaugeValue }]}>
                         <RadialBar dataKey="value" cornerRadius={8} background={{ fill: "var(--muted)" }}>
                           <Cell fill={category.color} />
                         </RadialBar>
@@ -175,11 +175,11 @@ export function BMICalculator() {
               {/* BMI scale bar chart */}
               <div className="p-5 rounded-2xl bg-white border border-border">
                 <p className="text-sm font-bold mb-4 text-foreground">BMI Reference Scale</p>
-                <div style={{ height }}>
+                <div style={{ height: 200 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={scaleData} barSize={32}>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--muted)" vertical={false} />
-                      <XAxis dataKey="name" tick={{ fontSize, fill: "var(--muted-foreground)" }} />
+                      <XAxis dataKey="name" tick={{ fontSize: 12, fill: "var(--muted-foreground)" }} />
                       <YAxis hide />
                       <Tooltip formatter={(val) => [`${val} BMI units`, "Range"]} contentStyle={{ borderRadius: "12px", fontSize: "12px", border: "1px solid var(--border)" }} />
                       <Bar dataKey="range" radius={[6, 6, 0, 0]}>

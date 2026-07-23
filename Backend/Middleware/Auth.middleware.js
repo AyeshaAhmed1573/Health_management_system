@@ -1,19 +1,21 @@
-import jwt from 'jsonwebtoken'; 
+import jwt from 'jsonwebtoken';
+
 // protect any route — must be logged in
 export function protect(req, res, next) {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer '))
-    return res.status(401).json({ message: 'Not authorized, no token' });
+    return res.status(401).json({ success: false, error: 'No token provided.' });
 
   const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET); // ✅ fixed: was verify() now jwt.verify()
     req.user = decoded; // { id, role }
     next();
   } catch (err) {
-    return res.status(401).json({ message: 'Token invalid or expired' });
+    const msg = err.name === 'TokenExpiredError' ? 'Token expired.' : 'Invalid token.';
+    return res.status(401).json({ success: false, error: msg });
   }
 }
 
@@ -21,9 +23,10 @@ export function protect(req, res, next) {
 // usage: restrictTo('admin')  or  restrictTo('doctor', 'admin')
 export function restrictTo(...roles) {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role))
+    if (!roles.includes(req.user?.role)) // 
       return res.status(403).json({
-        message: `Access denied. Required role: ${roles.join(' or ')}`,
+        success: false,
+        error: `Access restricted to: ${roles.join(', ')}.`
       });
     next();
   };

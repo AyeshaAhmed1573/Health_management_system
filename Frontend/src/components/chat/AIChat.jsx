@@ -2,51 +2,17 @@ import { useState, useRef, useEffect } from "react";
 import {
   Send, Mic, Paperclip, Bot, User,
   Activity, Heart, Calculator, Stethoscope, FileText,
-  ChevronRight, Sparkles, Clock, X
+  ChevronRight, Sparkles, Clock, X, AlertCircle
 } from "lucide-react";
-
-const SMART_RESPONSES = {
-  fever: { text: "I understand you have a fever. A fever is usually a sign your body is fighting an infection. Let me help you assess your symptoms more precisely.\n\nCan you tell me your current temperature and how long you've had it?\n\nFor a thorough assessment, I recommend using our Symptoms Checker.", suggestions: ["My temperature is 38.5°C", "I also have chills", "How do I reduce fever?"], action: { type: "symptoms", label: "Open Symptoms Checker" } },
-  blood_test: { text: "I can help you understand your blood test results. Blood tests reveal a great deal about your overall health. Upload your report and our AI will analyze each value and explain it in plain language.\n\nOur Report Analysis feature provides detailed, personalized insights.", suggestions: ["Upload my report", "What is CBC?", "Explain my cholesterol"], action: { type: "report", label: "Upload & Analyze Report" } },
-  bmi: { text: "BMI (Body Mass Index) is a screening tool calculated from your height and weight.\n\n**Reference ranges:**\n• Underweight < 18.5\n• Normal weight 18.5–24.9\n• Overweight 25–29.9\n• Obese ≥ 30\n\nLet me calculate your BMI right now!", suggestions: ["Calculate my BMI", "What's a healthy BMI?", "How to improve BMI?"], action: { type: "bmi", label: "Open BMI Calculator" } },
-  blood_pressure: { text: "High blood pressure (hypertension) occurs when the force of blood against your artery walls is consistently too high. Normal BP is below 120/80 mmHg.\n\n**Common causes:**\n• High-sodium diet\n• Lack of physical activity\n• Chronic stress\n• Genetics\n• Obesity\n\nI recommend a consultation with a cardiologist for proper evaluation.", suggestions: ["My BP is 140/90", "How to lower blood pressure?", "See a cardiologist"], action: { type: "doctor", label: "Consult a Cardiologist" } },
-  emergency: { text: "⚠️ If this is life-threatening, call emergency services (911) immediately!\n\nFor first aid guidance on common emergencies, I'm opening the First Aid section for you now.", suggestions: ["CPR instructions", "Choking response", "Allergic reaction"], action: { type: "firstaid", label: "Open First Aid Guide" } },
-  doctor: { text: "Connecting you with our network of verified healthcare professionals. You can consult with doctors specializing in various fields via text, voice, or video call.\n\nWould you like me to find a specialist based on your needs?", suggestions: ["Find a cardiologist", "General physician", "Mental health specialist"], action: { type: "doctor", label: "Browse Doctors" } },
-};
-
-function getAIResponse(msg) {
-  const l = msg.toLowerCase();
-  if (l.includes("fever") || l.includes("temperature")) return SMART_RESPONSES.fever;
-  if (l.includes("blood test") || l.includes("report") || l.includes("lab")) return SMART_RESPONSES.blood_test;
-  if (l.includes("bmi") || l.includes("weight") || l.includes("body mass")) return SMART_RESPONSES.bmi;
-  if (l.includes("blood pressure") || l.includes("hypertension")) return SMART_RESPONSES.blood_pressure;
-  if (l.includes("emergency") || l.includes("first aid") || l.includes("urgent")) return SMART_RESPONSES.emergency;
-  if (l.includes("doctor") || l.includes("consult") || l.includes("specialist")) return SMART_RESPONSES.doctor;
-  return {
-    text: "Thank you for sharing that. I'm here to assist with all your health questions. Could you provide more details so I can give you the most accurate guidance?\n\nI can help with symptom assessment, report analysis, BMI calculation, first aid, and connecting you with doctors.",
-    suggestions: ["Check my symptoms", "Analyze a report", "Calculate BMI", "Find a doctor"],
-  };
-}
+import { chatbotService } from "../../services/chatbotService";
 
 const INITIAL_MESSAGES = [
   {
     id: "1",
     role: "ai",
     text: "Hello! I'm your AI Health Assistant 👋\n\nI can help you with:\n• Symptom assessment & triage\n• Medical report explanations\n• Health calculations (BMI, etc.)\n• First aid guidance\n• Connecting you with doctors\n\nWhat can I help you with today?",
-    timestamp: Date(Date.now() - 60000),
-    suggestions: ["I have a fever", "Explain my blood test", "What is BMI?", "Why is blood pressure high?"],
+    timestamp: new Date(Date.now() - 60000),
   }
-];
-
-const ACTION_NAV = {
-  symptoms: "symptoms", report: "report", bmi: "bmi", firstaid: "firstaid", doctor: "doctors"
-};
-
-const CONVERSATION_HISTORY = [
-  { id: "c1", title: "Fever & headache symptoms", time: "Today, 9:14 AM", preview: "Based on your symptoms..." },
-  { id: "c2", title: "Blood test explanation", time: "Yesterday", preview: "Your CBC results show..." },
-  { id: "c3", title: "BMI & weight guidance", time: "Jun 10", preview: "Your BMI of 24.3 is..." },
-  { id: "c4", title: "Vitamin D deficiency", time: "Jun 8", preview: "Vitamin D levels below 30..." },
 ];
 
 export function AIChat({ onNavigate, initialPrompt }) {
@@ -54,10 +20,15 @@ export function AIChat({ onNavigate, initialPrompt }) {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [activeConv, setActiveConv] = useState("current");
+  const [currentSessionId, setCurrentSessionId] = useState(null);
+  const [sessions, setSessions] = useState([]);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
 
   useEffect(() => {
+    loadSessions();
     if (initialPrompt) setTimeout(() => sendMessage(initialPrompt), 400);
   }, []);
 
@@ -65,18 +36,114 @@ export function AIChat({ onNavigate, initialPrompt }) {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
-  function sendMessage(text) {
+  const loadSessions = async () => {
+    try {
+      const response = await chatbotService.getSessions();
+      if (response.success) {
+        setSessions(response.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to load sessions:', err);
+      // Don't show error for session loading, just continue with local state
+    }
+  };
+
+  const createNewSession = async () => {
+    try {
+      setLoading(true);
+      const response = await chatbotService.createSession();
+      if (response.success) {
+        setCurrentSessionId(response.data.sessionId);
+        setMessages(INITIAL_MESSAGES);
+        setActiveConv("current");
+        await loadSessions();
+      }
+    } catch (err) {
+      setError('Failed to create new session. Please try again.');
+      console.error('Session creation error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadSessionHistory = async (sessionId) => {
+    try {
+      setLoading(true);
+      const response = await chatbotService.getChatHistory(sessionId);
+      if (response.success && response.data) {
+        const sessionMessages = response.data.messages || [];
+        const formattedMessages = sessionMessages.map(msg => ({
+          id: msg._id || Date.now().toString(),
+          role: msg.role,
+          text: msg.content,
+          timestamp: new Date(msg.createdAt || Date.now())
+        }));
+        
+        if (formattedMessages.length === 0) {
+          formattedMessages.push(...INITIAL_MESSAGES);
+        }
+        
+        setMessages(formattedMessages);
+        setCurrentSessionId(sessionId);
+        setActiveConv(sessionId);
+      }
+    } catch (err) {
+      setError('Failed to load chat history. Please try again.');
+      console.error('Load history error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  async function sendMessage(text) {
     if (!text.trim()) return;
-    const userMsg = { id: Date.now().toString(), role: "user", text, timestamp: Date() };
+    
+    // If no session exists, create one first
+    let sessionId = currentSessionId;
+    if (!sessionId) {
+      try {
+        const sessionResponse = await chatbotService.createSession();
+        if (sessionResponse.success) {
+          sessionId = sessionResponse.data.sessionId;
+          setCurrentSessionId(sessionId);
+        } else {
+          throw new Error('Failed to create session');
+        }
+      } catch (err) {
+        setError('Failed to connect to chat service. Please try again.');
+        return;
+      }
+    }
+
+    const userMsg = { id: Date.now().toString(), role: "user", text, timestamp: new Date() };
     setMessages(prev => [...prev, userMsg]);
     setInput("");
     setIsTyping(true);
-    setTimeout(() => {
-      const response = getAIResponse(text);
-      const aiMsg = { id: (Date.now() + 1).toString(), role: "ai", text: response.text, timestamp: Date(), suggestions: response.suggestions, action: response.action };
-      setMessages(prev => [...prev, aiMsg]);
+    setError(null);
+
+    try {
+      const response = await chatbotService.sendMessage(sessionId, text);
+      if (response.success) {
+        const aiMsg = { 
+          id: (Date.now() + 1).toString(), 
+          role: "ai", 
+          text: response.data.reply, 
+          timestamp: new Date(),
+          isEmergency: response.data.isEmergency 
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        await loadSessions(); // Refresh sessions to update titles
+      } else {
+        throw new Error(response.error || 'Failed to send message');
+      }
+    } catch (err) {
+      setError('Failed to send message. Please try again.');
+      console.error('Send message error:', err);
+      // Remove the user message if it failed
+      setMessages(prev => prev.filter(msg => msg.id !== userMsg.id));
+    } finally {
       setIsTyping(false);
-    }, 1200 + Math.random() * 800);
+    }
   }
 
   return (
@@ -85,8 +152,9 @@ export function AIChat({ onNavigate, initialPrompt }) {
       <div className="hidden lg:flex flex-col w-64 border-r flex-shrink-0" style={{ borderColor: "var(--border)", background: "var(--secondary)" }}>
         <div className="px-4 py-4 border-b" style={{ borderColor: "var(--border)" }}>
           <button
-            onClick={() => setMessages(INITIAL_MESSAGES)}
-            className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90"
+            onClick={createNewSession}
+            disabled={loading}
+            className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90 disabled:opacity-50"
             style={{ background: "var(--primary)", color: "white" }}
           >
             <Sparkles size={14} />
@@ -97,22 +165,28 @@ export function AIChat({ onNavigate, initialPrompt }) {
           <p className="text-xs font-semibold uppercase tracking-wider px-2 mb-2" style={{ color: "var(--muted-foreground)" }}>History</p>
           {/* Current */}
           <button
-            onClick={() => setActiveConv("current")}
+            onClick={() => {
+              setCurrentSessionId(null);
+              setMessages(INITIAL_MESSAGES);
+              setActiveConv("current");
+            }}
             className="w-full text-left px-3 py-2.5 rounded-xl transition-all"
             style={{ background: activeConv === "current" ? "white" : "transparent", boxShadow: activeConv === "current" ? "0 1px 4px rgba(0,0,0,0.06)" : "none" }}
           >
             <p className="text-xs font-semibold text-foreground">Current conversation</p>
             <p className="text-xs truncate mt-0.5" style={{ color: "var(--muted-foreground)" }}>AI Health Assistant</p>
           </button>
-          {CONVERSATION_HISTORY.map(c => (
+          {sessions.map(session => (
             <button
-              key={c.id}
-              onClick={() => setActiveConv(c.id)}
+              key={session._id}
+              onClick={() => loadSessionHistory(session._id)}
               className="w-full text-left px-3 py-2.5 rounded-xl transition-all hover:bg-white"
-              style={{ background: activeConv === c.id ? "white" : "transparent" }}
+              style={{ background: activeConv === session._id ? "white" : "transparent" }}
             >
-              <p className="text-xs font-semibold text-foreground truncate">{c.title}</p>
-              <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>{c.time}</p>
+              <p className="text-xs font-semibold text-foreground truncate">{session.title}</p>
+              <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+                {new Date(session.createdAt).toLocaleDateString()}
+              </p>
             </button>
           ))}
         </div>
@@ -154,7 +228,19 @@ export function AIChat({ onNavigate, initialPrompt }) {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5" style={{ scrollbarWidth: "none", background: "linear-gradient(180deg, #BFD8E6 0%, #FFFFFF 50%, #8FCED1 100%)" }}>
+        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5" style={{ scrollbarWidth: "none", background: "linear-gradient(180deg, #BFD8E6 0%, #FFFFFF 50%, #8FCED1 100%" }}>
+          {error && (
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-50 border border-red-200">
+              <AlertCircle size={16} className="text-red-600" />
+              <p className="text-sm text-red-700">{error}</p>
+              <button 
+                onClick={() => setError(null)}
+                className="ml-auto text-red-600 hover:text-red-800"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
           {messages.map(msg => (
             <div key={msg.id} className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
               {msg.role === "ai" && (
@@ -172,29 +258,9 @@ export function AIChat({ onNavigate, initialPrompt }) {
                 >
                   {msg.text}
                 </div>
-                {msg.action && (
-                  <button
-                    onClick={() => onNavigate(ACTION_NAV[msg.action?.type] || "home")}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all hover:opacity-90 active:scale-95"
-                    style={{ background: "var(--accent)", color: "white", boxShadow: "0 2px 8px rgba(47,143,143,0.25)" }}
-                  >
-                    <Activity size={13} />
-                    {msg.action.label}
-                    <ChevronRight size={13} />
-                  </button>
-                )}
-                {msg.suggestions && (
-                  <div className="flex flex-wrap gap-2">
-                    {msg.suggestions.map((s, i) => (
-                      <button
-                        key={i}
-                        onClick={() => sendMessage(s)}
-                        className="px-3 py-1.5 rounded-xl text-xs border font-medium transition-all hover:shadow-sm active:scale-95 bg-white"
-                        style={{ borderColor: "rgba(47,143,143,0.25)", color: "var(--primary)" }}
-                      >
-                        {s}
-                      </button>
-                    ))}
+                {msg.isEmergency && (
+                  <div className="px-3 py-2 rounded-xl bg-red-50 border border-red-200">
+                    <p className="text-xs font-semibold text-red-700">⚠️ Emergency detected</p>
                   </div>
                 )}
                 <div className="flex items-center gap-1.5">
