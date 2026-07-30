@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const labTestSchema = new mongoose.Schema(
   {
@@ -75,4 +75,4 @@ const laboratorySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model('Laboratory', laboratorySchema);
+export default mongoose.model('Laboratory', laboratorySchema);
