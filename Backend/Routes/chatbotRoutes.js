@@ -1,27 +1,29 @@
 import express from 'express';
-const router = express.Router();
-
+import jwt from 'jsonwebtoken';
 import chatbotController from '../Controllers/chatbotController.js';
-
-import { protect } from '../Middleware/Auth.middleware.js';
 import { chatRateLimiter, sessionCreateLimiter } from '../Middleware/rateLimiter.js';
+
+const router = express.Router();
 
 const {
   createChatSession, getChatSessions, getChatHistory,
   sendMessage, clearMessages, deleteChatSession,
 } = chatbotController;
 
-// Optional authentication - if token provided, use it; otherwise proceed with guest user
+// Authentication middleware for chatbot session routes (handles Bearer token, cookies, or guest fallback)
 router.use((req, res, next) => {
+  let token = req.cookies?.token;
   const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.split(' ')[1];
+
+  if (!token && authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  }
+
+  if (token) {
     try {
-      const jwt = require('jsonwebtoken');
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
       req.user = decoded;
     } catch (err) {
-      // Invalid token, continue as guest
       req.user = { id: null, role: 'guest' };
     }
   } else {
@@ -37,11 +39,11 @@ router.use((req, res, next) => {
   next();
 });
 
-router.post  ('/',                        sessionCreateLimiter, createChatSession);
-router.get   ('/',                        getChatSessions);
-router.get   ('/:sessionId',             getChatHistory);
-router.post  ('/:sessionId/message',     chatRateLimiter, sendMessage);
-router.delete('/:sessionId/messages',    clearMessages);
-router.delete('/:sessionId',             deleteChatSession);
+router.post('/', sessionCreateLimiter, createChatSession);
+router.get('/', getChatSessions);
+router.get('/:sessionId', getChatHistory);
+router.post('/:sessionId/message', chatRateLimiter, sendMessage);
+router.delete('/:sessionId/messages', clearMessages);
+router.delete('/:sessionId', deleteChatSession);
 
 export default router;

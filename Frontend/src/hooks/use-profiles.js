@@ -1,15 +1,27 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 export function useProfiles() {
   return useQuery({
-    queryKey: [api.profiles.list.path],
+    queryKey: ["/api/patients"],
     queryFn: async () => {
-      const res = await fetch(api.profiles.list.path, { credentials: "include" });
-      if (res.status === 401) throw new Error("Unauthorized");
-      if (!res.ok) throw new Error("Failed to fetch profiles");
-      return api.profiles.list.responses[200].parse(await res.json());
+      let res = await fetch("/api/patients", { credentials: "include" });
+      if (!res.ok) {
+        res = await fetch("/api/profiles", { credentials: "include" });
+      }
+
+      if (!res.ok) return [];
+
+      const data = await res.json();
+      const rawList = Array.isArray(data) ? data : data.patientProfiles || [];
+
+      return rawList.map((p) => ({
+        id: p._id || p.id,
+        _id: p._id || p.id,
+        name: p.name || "Patient Profile",
+        relationship: p.relationship || "self",
+        createdAt: p.createdAt,
+      }));
     },
   });
 }
@@ -20,25 +32,24 @@ export function useCreateProfile() {
 
   return useMutation({
     mutationFn: async (data) => {
-      const res = await fetch(api.profiles.create.path, {
+      const res = await fetch("/api/patients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
         credentials: "include",
       });
 
-      if (res.status === 401) throw new Error("Unauthorized. Please log in.");
       if (!res.ok) {
-        if (res.status === 400) {
-          const error = api.profiles.create.responses[400].parse(await res.json());
-          throw new Error(error.message);
-        }
-        throw new Error("Failed to create profile");
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to create profile");
       }
-      return api.profiles.create.responses[201].parse(await res.json());
+
+      const resData = await res.json();
+      return resData.patientProfile || resData;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [api.profiles.list.path] });
+      queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/profiles"] });
       toast({
         title: "Success",
         description: "Profile created successfully.",
