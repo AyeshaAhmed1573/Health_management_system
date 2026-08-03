@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const medicalReportSchema = new mongoose.Schema(
   {
@@ -14,6 +14,11 @@ const medicalReportSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     category: {
       type: String,
       enum: [
@@ -26,16 +31,28 @@ const medicalReportSchema = new mongoose.Schema(
         'CT Scan',
         'MRI',
         'Ultrasound',
+        'Thyroid Profile',
+        'Urine Test',
+        'Blood Sugar',
+        'Stool Test',
+        'Hormone Test',
+        'Vitamins & Minerals',
+        'Cardiac Markers',
+        'Inflammation & Autoimmune',
+        'Infection & Microbiology',
+        'Tumor Markers',
+        'Coagulation Test',
+        'Nuclear Medicine',
+        'Biopsy & Pathology',
         'Other',
       ],
       default: 'Other',
     },
-    title: {
+    fileUrl: {
       type: String,
       required: true,
-      trim: true,
     },
-    fileUrl: {
+    publicId: {
       type: String,
       required: true,
     },
@@ -48,37 +65,53 @@ const medicalReportSchema = new mongoose.Schema(
       enum: ['pdf', 'jpg', 'jpeg', 'png'],
       required: true,
     },
-    fileSize: { type: Number }, // bytes
-    // AI analysis fields
+    fileSize: {
+      type: Number,
+    },
+    folderPath: {
+      type: String,
+    },
+    autoCategorized: {
+      type: Boolean,
+      default: false,
+    },
     aiSummary: {
       type: String,
     },
     aiHighlights: [
       {
-        label: String,     // e.g. "Hemoglobin"
-        value: String,     // e.g. "10.2 g/dL"
+        label: String,
+        value: String,
         status: {
           type: String,
           enum: ['normal', 'low', 'high', 'critical'],
         },
+        normalRange: String,
       },
     ],
-    aiAnalyzedAt: { type: Date },
-    // Uploaded by a lab
-    labId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Laboratory',
+    aiOverallStatus: {
+      type: String,
+      enum: ['Normal', 'Needs Attention', 'Concerning', 'Critical'],
     },
-    labBookingId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'LabBooking',
+    aiRecommendations: [
+      {
+        type: String,
+      },
+    ],
+    aiAnalyzedAt: {
+      type: Date,
     },
-    notes: { type: String },
+    extractedText: {
+      type: String,
+    },
+    notes: {
+      type: String,
+    },
   },
   { timestamps: true }
 );
 
-medicalReportSchema.index({ profileId: 1, category: 1 });
-medicalReportSchema.index({ profileId: 1, createdAt: -1 });
+medicalReportSchema.index({ profileId: 1, category: 1, createdAt: -1 });
 
-module.exports = mongoose.model('MedicalReport', medicalReportSchema);
+const MedicalReport = mongoose.models.MedicalReport || mongoose.model('MedicalReport', medicalReportSchema);
+export default MedicalReport;

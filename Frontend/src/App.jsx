@@ -16,7 +16,7 @@ import AIChat from "@/pages/AIChat";
 import SymptomsChecker from "@/pages/SymptomsChecker";
 import FirstAidGuidance from "@/pages/FirstAidGuidance";
 import BMICalculator from "@/pages/BMICalculator";
-import ReportAnalysis from "@/pages/ReportAnalysis";
+import Reports from "@/pages/Reports";
 import DoctorSignupPage from "@/pages/DoctorSignupPage";
 import LaboratorySignupPage from "@/pages/LaboratorySignupPage";
 import PharmacySignupPage from "@/pages/PharmacySignupPage";
@@ -36,7 +36,8 @@ function Router() {
         <Route path="/symptoms" component={SymptomsChecker} />
         <Route path="/firstaid" component={FirstAidGuidance} />
         <Route path="/bmi" component={BMICalculator} />
-        <Route path="/report" component={ReportAnalysis} />
+        <Route path="/reports" component={Reports} />
+        <Route path="/report" component={Reports} />
         <Route path="/doctor-signup" component={DoctorSignupPage} />
         <Route path="/laboratory-signup" component={LaboratorySignupPage} />
         <Route path="/pharmacy-signup" component={PharmacySignupPage} />
