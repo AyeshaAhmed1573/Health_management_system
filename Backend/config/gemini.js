@@ -1,6 +1,8 @@
+import '../config/env.js';
+
 const GEMINI_CONFIG = {
   apiKey: process.env.GEMINI_API_KEY,
-  model:  'gemini-3.5-flash-lite',
+  model:  process.env.GEMINI_MODEL || 'gemini-3.5-flash',
   baseUrl: 'https://generativelanguage.googleapis.com/v1beta/models',
   generationConfig: {
     temperature: 0.7,

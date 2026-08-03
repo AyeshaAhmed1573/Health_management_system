@@ -16,15 +16,16 @@ export async function createPatientProfile(req, res) {
       avatarUrl,
     } = req.body;
 
-    // Check if user exists
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    const targetUserId = userId || req.user?.id || req.user?._id;
+    if (!targetUserId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
 
     // Create patient profile
     const patientProfile = await PatientProfile.create({
-      userId,
-      name,
-      relationship,
+      userId: targetUserId,
+      name: name || 'Patient Profile',
+      relationship: relationship || 'self',
       gender,
       dateOfBirth,
       bloodGroup,
@@ -42,13 +43,13 @@ export async function createPatientProfile(req, res) {
   }
 }
 
-// GET ALL PATIENT PROFILES
 export async function getAllPatientProfiles(req, res) {
   try {
     const { userId, bloodGroup, gender } = req.query;
+    const targetUserId = userId || req.user?.id || req.user?._id;
     
     const filter = {};
-    if (userId) filter.userId = userId;
+    if (targetUserId) filter.userId = targetUserId;
     if (bloodGroup) filter.bloodGroup = bloodGroup;
     if (gender) filter.gender = gender;
 

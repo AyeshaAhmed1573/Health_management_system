@@ -2,15 +2,18 @@ import jwt from 'jsonwebtoken';
 
 // protect any route — must be logged in
 export function protect(req, res, next) {
-  const authHeader = req.headers.authorization;
+  let token = req.cookies?.token;
 
-  if (!authHeader || !authHeader.startsWith('Bearer '))
+  if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+
+  if (!token) {
     return res.status(401).json({ success: false, error: 'No token provided.' });
-
-  const token = authHeader.split(' ')[1];
+  }
 
   try {
-    const decoded = verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
     req.user = decoded; // { id, role }
     next();
   } catch (err) {

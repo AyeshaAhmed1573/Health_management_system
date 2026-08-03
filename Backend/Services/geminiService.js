@@ -16,38 +16,44 @@ export const generateReply = async (messages) => {
     return getMockResponse(messages);
   }
 
-  const response = await fetch(
-    `${baseUrl}/${model}:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: formatMessages(messages),
-        generationConfig,
-        safetySettings,
-      }),
+  try {
+    const response = await fetch(
+      `${baseUrl}/${model}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          contents: formatMessages(messages),
+          generationConfig,
+          safetySettings,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      console.warn(`Gemini API error ${response.status}: ${err?.error?.message || 'Falling back to mock response'}`);
+      return getMockResponse(messages);
     }
-  );
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `Gemini error ${response.status}`);
+    const data = await response.json();
+
+    if (data.candidates?.[0]?.finishReason === 'SAFETY') {
+      return "I'm unable to respond to that. Please rephrase or consult a healthcare professional directly.";
+    }
+
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!reply) return getMockResponse(messages);
+
+    return reply.trim();
+  } catch (err) {
+    console.warn('Gemini request failed, using mock fallback:', err.message);
+    return getMockResponse(messages);
   }
-
-  const data = await response.json();
-
-  if (data.candidates?.[0]?.finishReason === 'SAFETY') {
-    return "I'm unable to respond to that. Please rephrase or consult a healthcare professional directly.";
-  }
-
-  const reply = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!reply) throw new Error('Empty response from Gemini');
-
-  return reply.trim();
 };
 
-// Mock response function for testing without API key
+// Mock response function for testing without API key or on API failure
 const getMockResponse = (messages) => {
   const lastMessage = messages[messages.length - 1]?.content?.toLowerCase() || '';
 
