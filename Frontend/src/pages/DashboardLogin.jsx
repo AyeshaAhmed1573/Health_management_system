@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { HeartPulse, LogIn, ChevronDown, AlertCircle } from "lucide-react";
 import { useAuth, mockUsers } from "@/lib/dashboardAuth";
+import HealthcarePlatform from "@/pages/Dashboard";
 
 const C = {
   primary: "#6FB3B5",
@@ -26,7 +27,11 @@ function usersByRole(role) {
 }
 
 export default function DashboardLogin() {
-  const { login } = useAuth();
+  const { user, login } = useAuth();
+
+  if (user) {
+    return <HealthcarePlatform currentUser={user} />;
+  }
   const [selectedRole, setSelectedRole] = useState("admin");
   const [selectedId, setSelectedId] = useState("");
   const [error, setError] = useState("");
