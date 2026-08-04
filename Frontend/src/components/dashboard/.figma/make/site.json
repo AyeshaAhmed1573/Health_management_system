@@ -1,0 +1,10 @@
+{
+  "description": "Multi-role healthcare dashboards provide real-time metrics, charts, and management tools for admins, doctors, patients, labs, and pharmacies.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
