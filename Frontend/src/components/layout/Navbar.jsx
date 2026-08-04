@@ -23,7 +23,7 @@ export default function Navbar() {
     { label: "Home", href: "/", icon: HeartPulse },
     { label: "Reports", href: "/reports", icon: FileText },
     { label: "Doctors", href: "/doctors", icon: Activity },
-    { label: "LAB", href: "/lab", icon: MessageSquare },
+    { label: "Laboratories", href: "/lab", icon: MessageSquare },
     { label: "Pharmacy", href: "/pharmacy", icon: Pill },
     { label: "AI Module", href: "/ai", icon: Bot },
     { label: "Chat Center", href: "/chat-center", icon: MessageSquare },

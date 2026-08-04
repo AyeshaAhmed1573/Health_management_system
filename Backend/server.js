@@ -12,11 +12,12 @@ import patientRoutes from './Routes/Patient.routes.js';
 import laboratoryRoutes from './Routes/Laboratory.routes.js';
 import pharmacyRoutes from './Routes/Pharmacy.routes.js';
 import reportRoutes from './Routes/report.routes.js';
+import adminRoutes from './Routes/Admin.routes.js';
 
 const app = express();
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL || ['http://localhost:5173', 'http://localhost:5174'],
+  origin: process.env.FRONTEND_URL || ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
   credentials: true,
 }));
 app.use(json({ limit: '10mb' }));
@@ -35,5 +36,6 @@ app.use('/api/profiles', patientRoutes); // Alias for patients/profiles endpoint
 app.use('/api/laboratories', laboratoryRoutes);
 app.use('/api/pharmacies', pharmacyRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/admin', adminRoutes);
 
 export default app;

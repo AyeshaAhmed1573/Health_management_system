@@ -1,66 +1,126 @@
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Activity, Download, FileText, AlertCircle } from "lucide-react";
+import { Activity, Download, FileText, AlertCircle, MapPin, Clock, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
+import { laboratoryService } from "@/services/apiService";
 
 export default function Lab() {
-  const mockResults = [
-    { id: "L-8821", test: "Complete Blood Count", date: "Oct 24, 2024", status: "Normal", doctor: "Dr. Wilson" },
-    { id: "L-8822", test: "Lipid Panel", date: "Oct 24, 2024", status: "Review", doctor: "Dr. Jenkins" },
-    { id: "L-8815", test: "Thyroid Profile", date: "Jul 12, 2024", status: "Normal", doctor: "Dr. Jenkins" },
-    { id: "L-8702", test: "Metabolic Panel", date: "Jan 05, 2024", status: "Normal", doctor: "Dr. Wilson" },
-  ];
+  const [laboratories, setLaboratories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchLaboratories = async () => {
+      try {
+        const data = await laboratoryService.getAllLaboratories({ verificationStatus: 'verified' });
+        setLaboratories(data.laboratories || []);
+        setLoading(false);
+      } catch (err) {
+        setError("Failed to load laboratories. Please try again later.");
+        setLoading(false);
+      }
+    };
+
+    fetchLaboratories();
+  }, []);
+
+  if (loading) {
+    return (
+      <div>
+        <PageHeader
+          title="Laboratories"
+          description="Find and book diagnostic tests at verified laboratories."
+          icon={Activity}
+        />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+          <div className="text-center py-20">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            <p className="mt-4 text-muted-foreground">Loading laboratories...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div>
+        <PageHeader
+          title="Laboratories"
+          description="Find and book diagnostic tests at verified laboratories."
+          icon={Activity}
+        />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+          <div className="text-center py-20">
+            <p className="text-red-500">{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
       <PageHeader
-        title="Laboratory Results"
-        description="Access and download your recent diagnostic test reports."
+        title="Laboratories"
+        description="Find and book diagnostic tests at verified laboratories."
         icon={Activity}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
-        <div className="medical-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-secondary/50 text-foreground font-display font-semibold border-b border-border/50">
-                <tr>
-                  <th className="px-6 py-4">Test ID</th>
-                  <th className="px-6 py-4">Test Name</th>
-                  <th className="px-6 py-4">Date</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4">Ordered By</th>
-                  <th className="px-6 py-4 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/50">
-                {mockResults.map((result) => (
-                  <tr key={result.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-6 py-4 font-mono text-muted-foreground">{result.id}</td>
-                    <td className="px-6 py-4 font-medium flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-primary" />
-                      {result.test}
-                    </td>
-                    <td className="px-6 py-4 text-muted-foreground">{result.date}</td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold
-                        ${result.status === "Normal" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}
-                      `}>
-                        {result.status === "Review" && <AlertCircle className="w-3 h-3" />}
-                        {result.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">{result.doctor}</td>
-                    <td className="px-6 py-4 text-right">
-                      <Button variant="ghost" size="sm" className="text-primary hover:text-primary hover:bg-primary/10">
-                        <Download className="w-4 h-4 mr-2" /> PDF
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {laboratories.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-muted-foreground">No laboratories available at the moment.</p>
           </div>
-        </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {laboratories.map((lab) => (
+              <div key={lab._id} className="medical-card p-6 flex flex-col">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="bg-secondary p-3 rounded-xl">
+                    <Activity className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="flex items-center gap-1 text-sm font-semibold">
+                    <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                    {lab.rating?.average || "N/A"}
+                  </div>
+                </div>
+
+                <h3 className="font-bold text-xl mb-1">{lab.labName || "Unknown Laboratory"}</h3>
+                <p className="text-primary font-medium text-sm mb-4">{lab.licenseNumber || "License not available"}</p>
+
+                <div className="space-y-2 mb-6">
+                  <div className="flex items-center gap-2 text-sm">
+                    <MapPin className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">
+                      {lab.address?.street && `${lab.address.street}, `}
+                      {lab.address?.city && `${lab.address.city}, `}
+                      {lab.address?.province && `${lab.address.province} `}
+                      {lab.address?.postalCode || "Address not available"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <Clock className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">
+                      {lab.operatingHours?.open && `${lab.operatingHours.open} - `}
+                      {lab.operatingHours?.close || lab.operatingHours || "Hours not available"}
+                    </span>
+                  </div>
+                  {lab.homeCollection && (
+                    <div className="flex items-center gap-2 text-sm text-green-600">
+                      <FileText className="w-4 h-4" />
+                      <span>Home Collection Available</span>
+                    </div>
+                  )}
+                </div>
+
+                <Button className="w-full mt-auto btn-primary-gradient rounded-xl">
+                  <Download className="w-4 h-4 mr-2" /> View Tests
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
