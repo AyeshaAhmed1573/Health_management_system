@@ -12,7 +12,7 @@ import {
   deleteDoctor,
   getDoctorsBySpecialization,
 } from '../Controllers/Doctor.controller.js';
-import { protect } from '../Middleware/Auth.middleware.js';
+import { protect, restrictTo } from '../Middleware/Auth.middleware.js';
 
 // Public routes
 router.get('/', getAllDoctors);
@@ -27,7 +27,7 @@ router.put('/:id/slots', protect, updateAvailableSlots);
 router.put('/:id/rating', protect, updateDoctorRating);
 router.delete('/:id', protect, deleteDoctor);
 
-// Admin routes (require admin role - add admin middleware later)
-router.put('/:id/verify', protect, verifyDoctor);
+// Admin routes (require admin role)
+router.put('/:id/verify', protect, restrictTo('admin'), verifyDoctor);
 
 export default router;

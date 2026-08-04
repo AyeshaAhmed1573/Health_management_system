@@ -1,7 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 async function fetchUser() {
-  const response = await fetch("http://localhost:3000/api/auth/me", {
+  const response = await fetch(`${API_BASE_URL}/auth/me`, {
     credentials: "include",
   });
 
@@ -23,7 +25,7 @@ async function logout() {
 export function useAuth() {
   const queryClient = useQueryClient();
   const { data: user, isLoading } = useQuery({
-    queryKey: ["http://localhost:3000/api/auth/me"],
+    queryKey: ["auth", "me"],
     queryFn: fetchUser,
     retry: false,
     staleTime: 1000 * 60 * 5,
@@ -32,7 +34,7 @@ export function useAuth() {
   const logoutMutation = useMutation({
     mutationFn: logout,
     onSuccess: () => {
-      queryClient.setQueryData(["http://localhost:3000/api/auth/me"], null);
+      queryClient.setQueryData(["auth", "me"], null);
     },
   });
 

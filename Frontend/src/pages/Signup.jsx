@@ -11,18 +11,18 @@ import {
   UserCircle,
   Heart
 } from "lucide-react";
-import { Button } from "@/components/signup/src/app/components/ui/button";
-import { Input } from "@/components/signup/src/app/components/ui/input";
-import { Label } from "@/components/signup/src/app/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { 
   Select, 
   SelectContent, 
   SelectItem, 
   SelectTrigger, 
   SelectValue 
-} from "@/components/signup/src/app/components/ui/select";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/signup/src/app/components/ui/input-otp";
-import { ImageWithFallback } from "@/components/signup/src/app/components/figma/ImageWithFallback";
+} from "@/components/ui/select";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
 
 export default function Signup() {
   const [, navigate] = useLocation();

@@ -13,7 +13,7 @@ import {
   updateLaboratoryRating,
   deleteLaboratory,
 } from '../Controllers/Laboratory.controller.js';
-import { protect } from '../Middleware/Auth.middleware.js';
+import { protect, restrictTo } from '../Middleware/Auth.middleware.js';
 
 // Public routes
 router.get('/', getAllLaboratories);
@@ -29,7 +29,7 @@ router.delete('/:id/tests/:testId', protect, deleteLabTest);
 router.put('/:id/rating', protect, updateLaboratoryRating);
 router.delete('/:id', protect, deleteLaboratory);
 
-// Admin routes (require admin role - add admin middleware later)
-router.put('/:id/verify', protect, verifyLaboratory);
+// Admin routes (require admin role)
+router.put('/:id/verify', protect, restrictTo('admin'), verifyLaboratory);
 
 export default router;
