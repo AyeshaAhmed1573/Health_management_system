@@ -3,6 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import Signup from "@/pages/Signup";
 import NotFound from "@/pages/not-found";
 import Layout from "@/components/layout/Layout";
 import Home from "@/pages/Home";
@@ -20,6 +21,8 @@ import Reports from "@/pages/Reports";
 import DoctorSignupPage from "@/pages/DoctorSignupPage";
 import LaboratorySignupPage from "@/pages/LaboratorySignupPage";
 import PharmacySignupPage from "@/pages/PharmacySignupPage";
+import { AuthProvider } from "@/lib/dashboardAuth";
+import DashboardLogin from "@/pages/DashboardLogin";
 
 function Router() {
   return (
@@ -41,6 +44,12 @@ function Router() {
         <Route path="/doctor-signup" component={DoctorSignupPage} />
         <Route path="/laboratory-signup" component={LaboratorySignupPage} />
         <Route path="/pharmacy-signup" component={PharmacySignupPage} />
+	<Route path="/signup" component={Signup} />
+	<Route path="/login">
+  		<AuthProvider>
+    			<DashboardLogin />
+  		</AuthProvider>
+	</Route>
         <Route component={NotFound} />
       </Switch>
     </Layout>

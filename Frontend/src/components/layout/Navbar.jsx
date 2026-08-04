@@ -15,7 +15,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 
 export default function Navbar() {
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -97,7 +97,7 @@ export default function Navbar() {
               </DropdownMenu>
             ) : (
               <Button
-                onClick={() => (window.location.href = "/api/login")}
+                onClick={() => navigate("/signup")}
                 className="btn-primary-gradient rounded-full px-6"
               >
                 Log In
@@ -150,7 +150,7 @@ export default function Navbar() {
                       onClick={() => {
                         setIsOpen(false);
                         if (isAuthenticated) logout();
-                        else window.location.href = "/api/login";
+                        else navigate("/signup");
                       }}
                     >
                       {isAuthenticated ? "Log Out" : "Log In"}
