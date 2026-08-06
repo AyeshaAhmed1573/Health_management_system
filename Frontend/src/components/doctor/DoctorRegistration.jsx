@@ -5,11 +5,15 @@ import { UploadDocumentsForm } from './UploadDocumentsForm';
 import { AccountForm } from './AccountForm';
 import { SubmissionSuccess } from './SubmissionSuccess';
 import { Card } from './ui/card';
-import { Stethoscope } from 'lucide-react';
+import { Stethoscope, AlertCircle } from 'lucide-react';
+import { useAuth } from '@/lib/authContext';
 
 export function DoctorRegistration() {
+  const { register } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -41,8 +45,38 @@ export function DoctorRegistration() {
     if (currentStep > 1) setCurrentStep(currentStep - 1);
   };
 
-  const handleSubmit = () => {
-    setIsSubmitted(true);
+  const handleSubmit = async () => {
+    setError('');
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    setLoading(true);
+
+    const result = await register(
+      {
+        name: formData.fullName,
+        email: formData.email,
+        password: formData.password,
+        phone: formData.phone,
+      },
+      'doctor'
+    );
+
+    if (result.success) {
+      setIsSubmitted(true);
+    } else {
+      setError(result.error);
+    }
+
+    setLoading(false);
   };
 
   if (isSubmitted) {
@@ -123,7 +157,14 @@ export function DoctorRegistration() {
           <UploadDocumentsForm formData={formData} updateFormData={updateFormData} onNext={handleNext} onPrevious={handlePrevious} />
         )}
         {currentStep === 4 && (
-          <AccountForm formData={formData} updateFormData={updateFormData} onSubmit={handleSubmit} onPrevious={handlePrevious} />
+          <AccountForm
+            formData={formData}
+            updateFormData={updateFormData}
+            onSubmit={handleSubmit}
+            onPrevious={handlePrevious}
+            error={error}
+            loading={loading}
+          />
         )}
       </Card>
     </div>

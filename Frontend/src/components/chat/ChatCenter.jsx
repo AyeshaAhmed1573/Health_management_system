@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Bot, Stethoscope, Heart, Calculator, FileText,
   MessageSquare, Search, Star, Clock, ChevronRight,
-  Activity, Zap, Shield, TrendingUp
+  Activity, Zap, Shield, TrendingUp, Plus
 } from "lucide-react";
 import { DOCTORS } from "./DoctorList";
+import { chatApi } from "@/lib/api";
 
 const SUGGESTED_PROMPTS = [
   { text: "I have a fever", emoji: "🌡️", color: "#ef4444" },
@@ -17,6 +18,8 @@ const QUICK_ACTIONS = [
   { id: "symptoms", icon: <Stethoscope size={24} />, label: "Symptoms Checker", desc: "AI-powered symptom assessment", color: "#2F8F8F", bg: "linear-gradient(135deg, #BFD8E6, #EEF7F8)", border: "rgba(47,143,143,0.15)" },
   { id: "firstaid", icon: <Heart size={24} />, label: "First Aid Guide", desc: "Step-by-step emergency help", color: "#ef4444", bg: "linear-gradient(135deg, #FEF2F2, #FFF5F5)", border: "rgba(239,68,68,0.15)" },
   { id: "bmi", icon: <Calculator size={24} />, label: "BMI Calculator", desc: "Body mass index tool", color: "#5FAFB6", bg: "linear-gradient(135deg, #E8F6F6, #F5FAFB)", border: "rgba(95,175,182,0.15)" },
+  { id: "bp", icon: <Activity size={24} />, label: "Blood Pressure", desc: "Track your BP readings", color: "#8FD0D3", bg: "linear-gradient(135deg, #EEF7F8, #BFD8E6)", border: "rgba(143,208,211,0.15)" },
+  { id: "sugar", icon: <Activity size={24} />, label: "Blood Sugar", desc: "Track your glucose levels", color: "#8FCED1", bg: "linear-gradient(135deg, #E8F6F6, #EEF7F8)", border: "rgba(143,206,209,0.15)" },
   { id: "report", icon: <FileText size={24} />, label: "Medical Reports", desc: "AI report analysis", color: "#8FD0D3", bg: "linear-gradient(135deg, #EEF7F8, #BFD8E6)", border: "rgba(143,208,211,0.15)" },
 ];
 
@@ -27,14 +30,42 @@ const STATS = [
   { label: "Health Score", value: "92", icon: <TrendingUp size={16} />, color: "#2F8F8F", change: "+4 pts" },
 ];
 
-const RECENT_CHATS = [
-  { id: "ai", name: "AI Health Assistant", isAI: true, lastMessage: "Based on your symptoms, I recommend checking your temperature and staying hydrated.", time: "2m ago", unread: 0 },
-  { id: "doc1", doctorId: "1", name: "Dr. Sarah Mitchell", specialty: "Cardiologist", photo: "https://images.unsplash.com/photo-1594824476967-48c8b964273f", isAI: false, lastMessage: "Your blood pressure readings look stable. Let's monitor for another week.", time: "1h ago", unread: 0 },
-  { id: "doc2", doctorId: "2", name: "Dr. James Chen", specialty: "General Physician", photo: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d", isAI: false, lastMessage: "I've reviewed your latest report. Schedule a follow-up appointment soon.", time: "Yesterday", unread: 0 },
-];
 
-export function ChatCenter({ onNavigate }) {
+export function ChatCenter({ onNavigate, userId }) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [conversations, setConversations] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (userId) {
+      loadConversations();
+    }
+  }, [userId]);
+
+  const loadConversations = async () => {
+    try {
+      const data = await chatApi.getUserConversations();
+      if (data.conversations) {
+        setConversations(data.conversations);
+      }
+    } catch (error) {
+      console.error('Failed to load conversations:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createNewConversation = async () => {
+    try {
+      const data = await chatApi.createConversation('New Conversation');
+      if (data.conversation) {
+        setConversations([data.conversation, ...conversations]);
+        onNavigate("ai-chat", { conversationId: data.conversation._id });
+      }
+    } catch (error) {
+      console.error('Failed to create conversation:', error);
+    }
+  };
 
   const filteredDoctors = DOCTORS.filter(
     d => !searchQuery || d.name.toLowerCase().includes(searchQuery.toLowerCase()) || d.specialty.toLowerCase().includes(searchQuery.toLowerCase())
@@ -201,49 +232,44 @@ export function ChatCenter({ onNavigate }) {
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-bold text-foreground">Recent Conversations</h2>
-              <Clock size={14} style={{ color: "var(--muted-foreground)" }} />
+              <button
+                onClick={createNewConversation}
+                className="text-xs font-semibold flex items-center gap-1 transition-colors hover:opacity-70"
+                style={{ color: "var(--primary)" }}
+              >
+                <Plus size={12} />
+                New
+              </button>
             </div>
             <div className="space-y-2">
-              {RECENT_CHATS.map(chat => (
-                <button
-                  key={chat.id}
-                  onClick={() => {
-                    if (chat.isAI) {
-                      onNavigate("ai-chat");
-                    } else {
-                      const doctor = DOCTORS.find(d => d.id === (chat).doctorId);
-                      if (doctor) onNavigate("doctor-chat", doctor);
-                    }
-                  }}
-                  className="w-full flex items-center gap-3 p-3.5 rounded-2xl bg-white border border-border transition-all hover:shadow-md text-left active:scale-[0.98]"
-                >
-                  {chat.isAI ? (
+              {loading ? (
+                <p className="text-xs text-muted-foreground">Loading conversations...</p>
+              ) : conversations.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No conversations yet. Start a new chat!</p>
+              ) : (
+                conversations.map(conversation => (
+                  <button
+                    key={conversation._id}
+                    onClick={() => onNavigate("ai-chat", { conversationId: conversation._id })}
+                    className="w-full flex items-center gap-3 p-3.5 rounded-2xl bg-white border border-border transition-all hover:shadow-md text-left active:scale-[0.98]"
+                  >
                     <div className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: "linear-gradient(135deg, #2F8F8F, #5FAFB6)" }}>
                       <Bot size={20} color="white" />
                     </div>
-                  ) : (
-                    <div className="relative flex-shrink-0">
-                      <img src={`${(chat).photo}?w=80&h=80&fit=crop&auto=format`} alt={chat.name} className="w-11 h-11 rounded-2xl object-cover" />
-                      <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white" style={{ background: "#2F8F8F" }} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="text-sm font-semibold text-foreground truncate">{conversation.title}</p>
+                        <span className="text-xs flex-shrink-0" style={{ color: "var(--muted-foreground)" }}>
+                          {new Date(conversation.updatedAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-xs truncate mt-0.5 leading-relaxed" style={{ color: "var(--muted-foreground)" }}>
+                        {conversation.title}
+                      </p>
                     </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-1">
-                      <p className="text-sm font-semibold text-foreground truncate">{chat.name}</p>
-                      <span className="text-xs flex-shrink-0" style={{ color: "var(--muted-foreground)" }}>{chat.time}</span>
-                    </div>
-                    {!chat.isAI && (
-                      <p className="text-xs" style={{ color: "var(--primary)" }}>{(chat).specialty}</p>
-                    )}
-                    <p className="text-xs truncate mt-0.5 leading-relaxed" style={{ color: "var(--muted-foreground)" }}>{chat.lastMessage}</p>
-                  </div>
-                  {chat.unread > 0 && (
-                    <span className="w-5 h-5 rounded-full text-white text-xs flex items-center justify-center font-bold flex-shrink-0" style={{ background: "var(--primary)" }}>
-                      {chat.unread}
-                    </span>
-                  )}
-                </button>
-              ))}
+                  </button>
+                ))
+              )}
             </div>
           </div>
         </div>

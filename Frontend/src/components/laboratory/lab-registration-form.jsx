@@ -14,7 +14,8 @@ import { Checkbox } from "./ui/checkbox";
 import { ProgressSteps } from "./progress-steps";
 import { FileUpload } from "./file-upload";
 import { MedixLogo } from "./medix-logo";
-import { CheckCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { CheckCircle, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react";
+import { useAuth } from "@/lib/authContext";
 
 const STEPS = ["Lab Information", "Contact Details", "Upload Documents", "Account Setup"];
 
@@ -45,8 +46,11 @@ const SECURITY_QUESTIONS = [
 ];
 
 export function LabRegistrationForm() {
+  const { register } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     labName: "",
     labRegistrationNumber: "",
@@ -103,9 +107,39 @@ export function LabRegistrationForm() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsSubmitted(true);
+    setError('');
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    setLoading(true);
+
+    const result = await register(
+      {
+        name: formData.labName,
+        email: formData.contactEmail,
+        password: formData.password,
+        phone: formData.contactPhone,
+      },
+      'lab'
+    );
+
+    if (result.success) {
+      setIsSubmitted(true);
+    } else {
+      setError(result.error);
+    }
+
+    setLoading(false);
   };
 
   if (isSubmitted) {
@@ -542,6 +576,13 @@ export function LabRegistrationForm() {
                   />
                 </div>
 
+                {error && (
+                  <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg">
+                    <AlertCircle className="w-4 h-4" />
+                    {error}
+                  </div>
+                )}
+
                 <div className="flex items-start space-x-3 pt-4">
                   <Checkbox
                     id="terms"
@@ -580,9 +621,10 @@ export function LabRegistrationForm() {
               {currentStep === STEPS.length - 1 ? (
                 <Button
                   type="submit"
+                  disabled={loading}
                   className="bg-[#6FB3B5] hover:bg-[#5FA2A4] text-white ml-auto"
                 >
-                  Submit for Verification
+                  {loading ? 'Submitting...' : 'Submit for Verification'}
                   <ChevronRight className="w-4 h-4 ml-2" />
                 </Button>
               ) : (

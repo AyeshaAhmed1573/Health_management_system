@@ -25,6 +25,9 @@ const patientProfileSchema = new mongoose.Schema(
     dateOfBirth: {
       type: Date,
     },
+    height: {
+      type: Number, // in cm
+    },
     bloodGroup: {
       type: String,
       enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'unknown'],

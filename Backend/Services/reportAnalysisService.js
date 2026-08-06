@@ -2,6 +2,92 @@ import GEMINI_CONFIG from '../config/gemini.js';
 import { buildReportAnalysisPrompt } from '../utils/reportAnalyzer.js';
 
 /**
+ * Extracts structured values from a report using Gemini API.
+ * @param {string} category 
+ * @param {string} reportText 
+ * @returns {Promise<Array>} Array of { parameterName, value, unit, referenceRange, isAbnormal }
+ */
+export async function extractStructuredValues(category, reportText) {
+  const { apiKey, model, baseUrl, generationConfig, safetySettings } = GEMINI_CONFIG;
+
+  if (!reportText || !reportText.trim()) {
+    return [];
+  }
+
+  const extractionPrompt = `Extract all numerical test values from this ${category} report. Return ONLY a JSON array with this exact structure:
+[
+  {
+    "parameterName": "e.g., Hemoglobin, WBC, Platelets",
+    "value": "the numeric value as a string (e.g., '13.5')",
+    "unit": "the unit (e.g., 'g/dL', '10³/µL')",
+    "referenceRange": "the normal range if mentioned (e.g., '12.0 - 15.5 g/dL')",
+    "isAbnormal": boolean - true if value is outside reference range
+  }
+]
+
+Report text:
+${reportText}`;
+
+  if (!apiKey) {
+    console.warn('GEMINI_API_KEY not set, returning empty extracted values');
+    return [];
+  }
+
+  try {
+    const response = await fetch(
+      `${baseUrl}/${model}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: extractionPrompt }] }],
+          generationConfig,
+          safetySettings,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      console.error('Gemini API Error for value extraction:', err);
+      return [];
+    }
+
+    const data = await response.json();
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!rawText) {
+      return [];
+    }
+
+    // Clean JSON response
+    const jsonMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/) || [null, rawText];
+    let jsonString = jsonMatch[1].trim();
+
+    const objectMatch = jsonString.match(/\[[\s\S]*\]/);
+    if (objectMatch) {
+      jsonString = objectMatch[0];
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(jsonString);
+    } catch (parseErr) {
+      console.error('JSON parse error for extracted values:', parseErr.message);
+      jsonString = jsonString
+        .replace(/,\s*]/g, ']')
+        .replace(/'/g, '"');
+      parsed = JSON.parse(jsonString);
+    }
+
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    console.error('Error during value extraction:', err);
+    return [];
+  }
+}
+
+/**
  * Analyzes a report using Google Gemini API.
  * @param {string} category 
  * @param {string} reportText 
@@ -50,9 +136,29 @@ export async function analyzeReportWithAI(category, reportText) {
 
     // Clean JSON response (strip ```json and ``` if present)
     const jsonMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/) || [null, rawText];
-    const jsonString = jsonMatch[1].trim();
+    let jsonString = jsonMatch[1].trim();
 
-    const parsed = JSON.parse(jsonString);
+    console.log('Raw AI response:', rawText.substring(0, 200));
+    console.log('Cleaned JSON string:', jsonString.substring(0, 200));
+
+    // Try to extract JSON object if response contains extra text
+    const objectMatch = jsonString.match(/\{[\s\S]*\}/);
+    if (objectMatch) {
+      jsonString = objectMatch[0];
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(jsonString);
+    } catch (parseErr) {
+      console.error('JSON parse error, attempting to fix common issues:', parseErr.message);
+      // Try to fix common JSON issues
+      jsonString = jsonString
+        .replace(/,\s*}/g, '}')  // Remove trailing commas
+        .replace(/,\s*]/g, ']')  // Remove trailing commas in arrays
+        .replace(/'/g, '"');     // Replace single quotes with double quotes
+      parsed = JSON.parse(jsonString);
+    }
     return {
       summary: parsed.summary || 'Report analysis completed.',
       highlights: Array.isArray(parsed.highlights) ? parsed.highlights : [],

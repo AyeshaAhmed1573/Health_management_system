@@ -48,6 +48,48 @@ const medicalReportSchema = new mongoose.Schema(
       ],
       default: 'Other',
     },
+    // New fields for enhanced report management
+    testType: {
+      type: String,
+      trim: true,
+      index: true,
+    },
+    isCustomTestType: {
+      type: Boolean,
+      default: false,
+    },
+    testDate: {
+      type: Date,
+      default: Date.now,
+    },
+    extractedValues: [
+      {
+        parameterName: {
+          type: String,
+          trim: true,
+        },
+        value: {
+          type: mongoose.Schema.Types.Mixed,
+        },
+        unit: {
+          type: String,
+          trim: true,
+        },
+        referenceRange: {
+          type: String,
+          trim: true,
+        },
+        isAbnormal: {
+          type: Boolean,
+          default: false,
+        },
+      },
+    ],
+    needsManualReview: {
+      type: Boolean,
+      default: false,
+    },
+    // Original fields
     fileUrl: {
       type: String,
       required: true,
@@ -111,7 +153,10 @@ const medicalReportSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Index for folder-style querying
+medicalReportSchema.index({ userId: 1, testType: 1 });
 medicalReportSchema.index({ profileId: 1, category: 1, createdAt: -1 });
+medicalReportSchema.index({ profileId: 1, testType: 1, testDate: -1 });
 
 const MedicalReport = mongoose.models.MedicalReport || mongoose.model('MedicalReport', medicalReportSchema);
 export default MedicalReport;

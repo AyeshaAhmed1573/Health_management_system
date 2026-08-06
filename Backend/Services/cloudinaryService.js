@@ -9,6 +9,7 @@ cloudinary.config({
 
 /**
  * Uploads a file (path, base64, or buffer) to Cloudinary in structured folder path.
+ * Falls back to local file storage if Cloudinary fails.
  * @param {string} filePath 
  * @param {string} userId 
  * @param {string} profileId 
@@ -18,29 +19,45 @@ cloudinary.config({
 export async function uploadToCloudinary(filePath, userId, profileId, category) {
   const folder = `reports/${userId}/${profileId}/${category.replace(/\s+/g, '_')}`;
 
-  if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY) {
-    console.warn('Cloudinary environment variables missing. Returning fallback upload structure.');
-    const mockPublicId = `${folder}/mock_${Date.now()}`;
-    return {
-      fileUrl: filePath?.startsWith('http') ? filePath : 'https://res.cloudinary.com/demo/image/upload/sample.jpg',
-      publicId: mockPublicId,
-    };
+  // Try Cloudinary first
+  if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
+    try {
+      const result = await cloudinary.uploader.upload(filePath, {
+        folder,
+        resource_type: 'auto',
+      });
+
+      return {
+        fileUrl: result.secure_url,
+        publicId: result.public_id,
+      };
+    } catch (error) {
+      console.error('Cloudinary upload error:', error.message);
+      console.warn('Falling back to local file storage');
+    }
+  } else {
+    console.warn('Cloudinary credentials missing. Using local file storage.');
   }
 
-  try {
-    const result = await cloudinary.uploader.upload(filePath, {
-      folder,
-      resource_type: 'auto',
-    });
-
-    return {
-      fileUrl: result.secure_url,
-      publicId: result.public_id,
-    };
-  } catch (error) {
-    console.error('Cloudinary upload error:', error);
-    throw new Error(`Failed to upload to Cloudinary: ${error.message}`);
+  // Fallback: Use local file storage
+  const fs = await import('fs');
+  const path = await import('path');
+  
+  const fileName = path.basename(filePath);
+  const localFolder = path.join('public', 'uploads', folder);
+  
+  // Create directory if it doesn't exist
+  if (!fs.existsSync(localFolder)) {
+    fs.mkdirSync(localFolder, { recursive: true });
   }
+  
+  const localPath = path.join(localFolder, fileName);
+  fs.copyFileSync(filePath, localPath);
+  
+  return {
+    fileUrl: `/uploads/${folder}/${fileName}`,
+    publicId: `${folder}/${fileName}`,
+  };
 }
 
 /**

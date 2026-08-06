@@ -1,9 +1,9 @@
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 
 
 
-export function AccountSetup({ formData, updateFormData }) {
+export function AccountSetup({ formData, updateFormData, error, loading }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -103,6 +103,13 @@ export function AccountSetup({ formData, updateFormData }) {
               </p>
             )}
         </div>
+
+        {error && (
+          <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg">
+            <AlertCircle className="w-4 h-4" />
+            {error}
+          </div>
+        )}
 
         {/* Terms and Conditions */}
         <div

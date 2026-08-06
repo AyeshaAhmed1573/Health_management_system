@@ -1,8 +1,21 @@
 import { ChatCenter } from "@/components/chat/ChatCenter";
 import { useLocation } from "wouter";
+import { useAuth } from "@/lib/authContext";
+import { useEffect } from "react";
 
 export default function ChatCenterPage() {
   const [, navigate] = useLocation();
+  const { isAuthenticated, user } = useAuth();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate("/patient-login");
+    }
+  }, [isAuthenticated, navigate]);
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const handleNavigate = (screen, data) => {
     if (screen === "ai-chat") {
@@ -17,10 +30,14 @@ export default function ChatCenterPage() {
       navigate("/firstaid");
     } else if (screen === "bmi") {
       navigate("/bmi");
+    } else if (screen === "bp") {
+      navigate("/blood-pressure");
+    } else if (screen === "sugar") {
+      navigate("/blood-sugar");
     } else if (screen === "report") {
       navigate("/report");
     }
   };
 
-  return <ChatCenter onNavigate={handleNavigate} />;
+  return <ChatCenter onNavigate={handleNavigate} userId={user?._id} />;
 }

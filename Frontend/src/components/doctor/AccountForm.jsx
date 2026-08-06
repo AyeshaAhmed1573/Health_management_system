@@ -1,13 +1,15 @@
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Lock, ChevronLeft, CheckCircle, Info } from 'lucide-react';
+import { Lock, ChevronLeft, CheckCircle, Info, AlertCircle } from 'lucide-react';
 
 export function AccountForm({
   formData,
   updateFormData,
   onSubmit,
   onPrevious,
+  error,
+  loading,
 }) {
   return (
     <div className="space-y-6">
@@ -69,6 +71,13 @@ export function AccountForm({
             )}
         </div>
 
+        {error && (
+          <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg">
+            <AlertCircle className="w-4 h-4" />
+            {error}
+          </div>
+        )}
+
         {/* Information Panel */}
         <div className="border rounded-xl p-5 mt-8" style={{ backgroundColor: '#DCE8EE', borderColor: '#9BD3D5', borderWidth: '1px' }}>
           <div className="flex items-start gap-3">
@@ -116,12 +125,13 @@ export function AccountForm({
           disabled={
             !formData.password ||
             !formData.confirmPassword ||
-            formData.password !== formData.confirmPassword
+            formData.password !== formData.confirmPassword ||
+            loading
           }
           className="text-white px-10 h-12 text-base font-medium rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
           style={{ backgroundColor: '#6FB3B5' }}
         >
-          Submit for Verification
+          {loading ? 'Submitting...' : 'Submit for Verification'}
         </Button>
       </div>
     </div>

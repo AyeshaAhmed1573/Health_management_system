@@ -9,7 +9,9 @@ import {
   EyeOff,
   Calendar,
   UserCircle,
-  Heart
+  Heart,
+  AlertCircle,
+  CheckCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,12 +25,16 @@ import {
 } from "@/components/ui/select";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { ImageWithFallback } from "@/components/figma/ImageWithFallback";
+import { useAuth } from "@/lib/authContext";
+import { OtpVerification } from "@/components/OtpVerification";
 
 export default function Signup() {
   const [, navigate] = useLocation();
-  const [step, setStep] = useState("signup");
+  const { register } = useAuth();
+  const [step, setStep] = useState("email-verify"); // Start with email verification
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [verifiedEmail, setVerifiedEmail] = useState("");
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -38,19 +44,52 @@ export default function Signup() {
     gender: "",
     dateOfBirth: ""
   });
-  const [otp, setOtp] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSignup = (e) => {
-    e.preventDefault();
-    setStep("otp");
+  const handleEmailVerified = (email) => {
+    setVerifiedEmail(email);
+    setFormData(prev => ({ ...prev, email }));
+    setStep("signup");
   };
 
-  const handleVerifyOTP = () => {
-    navigate("/patient-profiles");
+  const handleSignup = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+
+    setLoading(true);
+
+    const result = await register(
+      {
+        name: formData.fullName,
+        email: verifiedEmail, // Use verified email
+        password: formData.password,
+        phone: formData.phone,
+      },
+      'patient'
+    );
+
+    if (result.success) {
+      setStep("success");
+    } else {
+      setError(result.error);
+    }
+
+    setLoading(false);
   };
 
   return (
@@ -79,14 +118,14 @@ export default function Signup() {
 
       <div className="flex-1 flex items-center justify-center p-8 bg-[#F4F6F8]">
         <div className="w-full max-w-md">
-          {step === "signup" ? (
+          {step === "email-verify" ? (
             <div className="bg-white rounded-2xl shadow-lg p-8">
               <div className="text-center mb-8">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-[#DCE8EE] rounded-full mb-4">
-                  <UserCircle className="w-8 h-8 text-[#6FB3B5]" />
+                  <Mail className="w-8 h-8 text-[#6FB3B5]" />
                 </div>
-                <h2 className="text-3xl text-[#2F3A40] mb-2">Create Account</h2>
-                <p className="text-[#7A8A92]">Join our healthcare platform today</p>
+                <h2 className="text-3xl text-[#2F3A40] mb-2">Verify Your Email</h2>
+                <p className="text-[#7A8A92]">We'll send you a verification code to create your account</p>
               </div>
 
               <div className="flex items-center justify-center mb-8">
@@ -96,6 +135,42 @@ export default function Signup() {
                   </div>
                   <div className="w-16 h-1 bg-[#DCE8EE] mx-2"></div>
                   <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#DCE8EE] text-[#7A8A92] text-sm">
+                    2
+                  </div>
+                </div>
+              </div>
+
+              <OtpVerification onVerified={handleEmailVerified} />
+              
+              <div className="mt-6 text-center">
+                <p className="text-[#7A8A92]">
+                  Already have an account?{" "}
+                  <button
+                    onClick={() => navigate("/patient-login")}
+                    className="text-[#6FB3B5] hover:underline"
+                  >
+                    Login
+                  </button>
+                </p>
+              </div>
+            </div>
+          ) : step === "signup" ? (
+            <div className="bg-white rounded-2xl shadow-lg p-8">
+              <div className="text-center mb-8">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-[#DCE8EE] rounded-full mb-4">
+                  <UserCircle className="w-8 h-8 text-[#6FB3B5]" />
+                </div>
+                <h2 className="text-3xl text-[#2F3A40] mb-2">Create Account</h2>
+                <p className="text-[#7A8A92]">Complete your profile to join our healthcare platform</p>
+              </div>
+
+              <div className="flex items-center justify-center mb-8">
+                <div className="flex items-center">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#6FB3B5] text-white text-sm">
+                    ✓
+                  </div>
+                  <div className="w-16 h-1 bg-[#6FB3B5] mx-2"></div>
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#6FB3B5] text-white text-sm">
                     2
                   </div>
                 </div>
@@ -129,13 +204,12 @@ export default function Signup() {
                     <Input
                       id="email"
                       type="email"
-                      placeholder="your.email@example.com"
-                      value={formData.email}
-                      onChange={(e) => handleInputChange("email", e.target.value)}
-                      className="pl-10 h-12 border-gray-300 focus:border-[#6FB3B5] focus:ring-[#6FB3B5]"
-                      required
+                      value={verifiedEmail}
+                      disabled
+                      className="pl-10 h-12 border-gray-300 bg-gray-50 text-gray-600"
                     />
                   </div>
+                  <p className="text-xs text-[#6FB3B5] mt-1">✓ Email verified</p>
                 </div>
 
                 <div>
@@ -240,11 +314,19 @@ export default function Signup() {
                   </div>
                 </div>
 
+                {error && (
+                  <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 p-3 rounded-lg">
+                    <AlertCircle className="w-4 h-4" />
+                    {error}
+                  </div>
+                )}
+
                 <Button 
                   type="submit" 
+                  disabled={loading}
                   className="w-full h-12 bg-[#6FB3B5] hover:bg-[#5fa3a5] text-white"
                 >
-                  Create Account
+                  {loading ? "Creating Account..." : "Create Account"}
                 </Button>
               </form>
 
@@ -252,7 +334,7 @@ export default function Signup() {
                 <p className="text-[#7A8A92]">
                   Already have an account?{" "}
                   <button
-                    onClick={() => navigate("/login")}
+                    onClick={() => navigate("/patient-login")}
                     className="text-[#6FB3B5] hover:underline"
                   >
                     Login
@@ -260,69 +342,23 @@ export default function Signup() {
                 </p>
               </div>
             </div>
-          ) : (
-            <div className="bg-white rounded-2xl shadow-lg p-8">
-              <div className="text-center mb-8">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-[#DCE8EE] rounded-full mb-4">
-                  <Mail className="w-8 h-8 text-[#6FB3B5]" />
-                </div>
-                <h2 className="text-3xl text-[#2F3A40] mb-2">Verify Your Email</h2>
-                <p className="text-[#7A8A92]">
-                  We've sent a verification code to<br />
-                  <span className="font-medium text-[#2F3A40]">{formData.email}</span>
-                </p>
+          ) : step === "success" ? (
+            <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-[#6FB3B5] rounded-full mb-6">
+                <CheckCircle className="w-10 h-10 text-white" />
               </div>
-
-              <div className="flex items-center justify-center mb-8">
-                <div className="flex items-center">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#6FB3B5] text-white text-sm">
-                    ✓
-                  </div>
-                  <div className="w-16 h-1 bg-[#6FB3B5] mx-2"></div>
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#6FB3B5] text-white text-sm">
-                    2
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <div>
-                  <Label className="text-[#2F3A40] mb-3 block text-center">
-                    Enter 6-Digit Code
-                  </Label>
-                  <div className="flex justify-center">
-                    <InputOTP maxLength={6} value={otp} onChange={setOtp}>
-                      <InputOTPGroup>
-                        <InputOTPSlot index={0} className="w-12 h-12 text-lg border-gray-300" />
-                        <InputOTPSlot index={1} className="w-12 h-12 text-lg border-gray-300" />
-                        <InputOTPSlot index={2} className="w-12 h-12 text-lg border-gray-300" />
-                        <InputOTPSlot index={3} className="w-12 h-12 text-lg border-gray-300" />
-                        <InputOTPSlot index={4} className="w-12 h-12 text-lg border-gray-300" />
-                        <InputOTPSlot index={5} className="w-12 h-12 text-lg border-gray-300" />
-                      </InputOTPGroup>
-                    </InputOTP>
-                  </div>
-                </div>
-
-                <Button 
-                  onClick={handleVerifyOTP}
-                  disabled={otp.length !== 6}
-                  className="w-full h-12 bg-[#6FB3B5] hover:bg-[#5fa3a5] text-white disabled:opacity-50"
-                >
-                  Verify & Continue
-                </Button>
-
-                <div className="text-center">
-                  <p className="text-[#7A8A92] text-sm">
-                    Didn't receive the code?{" "}
-                    <button className="text-[#6FB3B5] hover:underline">
-                      Resend Code
-                    </button>
-                  </p>
-                </div>
-              </div>
+              <h2 className="text-3xl text-[#2F3A40] mb-3">Account Created Successfully!</h2>
+              <p className="text-[#7A8A92] mb-8">
+                Welcome to Vitalis Healthcare. Your account has been created and your email has been verified.
+              </p>
+              <Button
+                onClick={() => navigate("/patient-login")}
+                className="w-full h-12 bg-[#6FB3B5] hover:bg-[#5fa3a5] text-white"
+              >
+                Go to Login
+              </Button>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

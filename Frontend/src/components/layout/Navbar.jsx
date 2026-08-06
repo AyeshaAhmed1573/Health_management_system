@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { HeartPulse, UserCircle, LogOut, Menu, Activity, Pill, Bot, Users, MessageSquare, FileText } from "lucide-react";
+import { HeartPulse, UserCircle, LogOut, Menu, Activity, Pill, Bot, Users, MessageSquare, FileText, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -21,13 +21,11 @@ export default function Navbar() {
 
   const navItems = [
     { label: "Home", href: "/", icon: HeartPulse },
-    { label: "Reports", href: "/reports", icon: FileText },
+    { label: "Dashboard", href: "/patient/dashboard", icon: LayoutDashboard },
     { label: "Doctors", href: "/doctors", icon: Activity },
     { label: "Laboratories", href: "/lab", icon: MessageSquare },
     { label: "Pharmacy", href: "/pharmacy", icon: Pill },
-    { label: "AI Module", href: "/ai", icon: Bot },
     { label: "Chat Center", href: "/chat-center", icon: MessageSquare },
-    { label: "Profiles", href: "/profiles", icon: Users },
   ];
 
   return (

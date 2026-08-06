@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const healthReadingSchema = new mongoose.Schema(
   {
@@ -16,7 +16,7 @@ const healthReadingSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['blood_pressure', 'blood_sugar', 'weight', 'heart_rate'],
+      enum: ['blood_pressure', 'blood_sugar', 'weight', 'heart_rate', 'bmi'],
       required: true,
     },
     // For blood_pressure: store systolic + diastolic separately
@@ -46,4 +46,4 @@ const healthReadingSchema = new mongoose.Schema(
 
 healthReadingSchema.index({ profileId: 1, type: 1, measuredAt: -1 });
 
-module.exports = mongoose.model('HealthReading', healthReadingSchema);
+export default mongoose.model('HealthReading', healthReadingSchema);

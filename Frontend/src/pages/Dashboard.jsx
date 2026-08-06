@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
@@ -9,9 +10,13 @@ import {
   Stethoscope, FileText, Star, Pill, FlaskConical, Activity, TrendingUp,
   TrendingDown, Bell, Search, Plus, Package, AlertTriangle, CheckCircle2,
   UserCog, ClipboardList, Beaker, Menu, X, HeartPulse, Syringe, ChevronRight,
-  Settings, ShieldCheck, LogOut,
+  Settings, ShieldCheck, LogOut, UserPlus, Upload, Activity as ActivityIcon,
+  Droplet, Scale,
 } from "lucide-react";
-import { useAuth } from "@/lib/dashboardAuth";
+import { useAuth } from "@/lib/authContext";
+import { patientProfilesApi, healthReadingsApi, notificationsApi, reportsApi } from "@/lib/api";
+import QuickActionUploadReport from "@/components/reports/QuickActionUploadReport";
+import AddHealthReadingModal from "@/components/health/AddHealthReadingModal";
 
 /* ---------------------------------- Design tokens ---------------------------------- */
 const C = {
@@ -607,6 +612,271 @@ function DoctorDashboard({ currentUser }) {
 }
 
 function PatientDashboard({ currentUser }) {
+  console.log('PatientDashboard component mounted');
+  const { user } = useAuth();
+  console.log('Auth user:', user);
+  const [, navigate] = useLocation();
+  const [profiles, setProfiles] = useState([]);
+  const [activeProfile, setActiveProfile] = useState(null);
+  const [healthReadings, setHealthReadings] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [reports, setReports] = useState([]);
+  const [uploadingReport, setUploadingReport] = useState(false);
+  const [showAddFamilyModal, setShowAddFamilyModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showAddReadingModal, setShowAddReadingModal] = useState(false);
+  const [newFamilyMember, setNewFamilyMember] = useState({
+    name: '',
+    relationship: '',
+    dateOfBirth: '',
+    bloodGroup: '',
+    gender: '',
+  });
+
+  useEffect(() => {
+    console.log('User effect triggered, user:', user);
+    const userId = user?._id || user?.id;
+    console.log('Extracted userId:', userId);
+    if (userId) {
+      console.log('Calling loadProfiles');
+      loadProfiles();
+      loadNotifications();
+    } else {
+      console.log('No userId available, skipping loadProfiles');
+    }
+  }, [user]);
+
+  useEffect(() => {
+    console.log('Active profile changed:', activeProfile);
+    if (activeProfile?._id) {
+      loadHealthReadings(activeProfile._id);
+      loadReports(activeProfile._id);
+    }
+  }, [activeProfile]);
+
+  // Refresh health readings when component mounts or when user navigates back
+  useEffect(() => {
+    if (activeProfile?._id) {
+      loadHealthReadings(activeProfile._id);
+    }
+  }, []);
+
+  const loadProfiles = async () => {
+    console.log('loadProfiles called');
+    try {
+      const userId = user?._id || user?.id;
+      console.log('Loading profiles for user:', userId);
+      if (!userId) {
+        console.error('User ID is undefined');
+        return;
+      }
+      const data = await patientProfilesApi.getAll(userId);
+      console.log('Profiles API response:', data);
+      if (data.patientProfiles) {
+        console.log('Setting profiles:', data.patientProfiles);
+        setProfiles(data.patientProfiles);
+        setActiveProfile(data.patientProfiles[0]);
+        console.log('Active profile set to:', data.patientProfiles[0]);
+      } else {
+        console.log('No patientProfiles in response');
+      }
+    } catch (error) {
+      console.error('Failed to load profiles:', error);
+    }
+  };
+
+  const loadHealthReadings = async (profileId) => {
+    try {
+      // Get readings for the last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      const data = await healthReadingsApi.getByProfile(profileId, {
+        startDate: thirtyDaysAgo.toISOString(),
+      });
+      console.log('Health readings API response:', data);
+      if (data.readings) {
+        setHealthReadings(data.readings);
+        console.log('Health readings set:', data.readings);
+      } else {
+        console.log('No readings in response');
+      }
+    } catch (error) {
+      console.error('Failed to load health readings:', error);
+    }
+  };
+
+  const loadNotifications = async () => {
+    try {
+      const data = await notificationsApi.getByUser(user._id);
+      if (data.notifications) {
+        setNotifications(data.notifications);
+        setUnreadCount(data.unreadCount || 0);
+      }
+    } catch (error) {
+      console.error('Failed to load notifications:', error);
+    }
+  };
+
+  const loadReports = async (profileId) => {
+    try {
+      console.log('Loading reports for profileId:', profileId);
+      const data = await reportsApi.getFolders(profileId);
+      console.log('Reports API response:', data);
+      if (data) {
+        const allReports = Object.values(data).flatMap(folder => folder.reports || []);
+        console.log('Flattened reports:', allReports);
+        console.log('Number of reports:', allReports.length);
+        setReports(allReports);
+      }
+    } catch (error) {
+      console.error('Failed to load reports:', error);
+    }
+  };
+
+  const handleReportUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !activeProfile?._id) return;
+
+    setUploadingReport(true);
+    try {
+      console.log('Uploading report:', file.name);
+      // Upload to Cloudinary
+      const cloudinaryResult = await reportsApi.uploadToCloudinary(file);
+      console.log('Cloudinary result:', cloudinaryResult);
+      
+      const reportData = {
+        title: file.name.split('.')[0],
+        profileId: activeProfile._id,
+        fileUrl: cloudinaryResult.fileUrl,
+        publicId: cloudinaryResult.publicId,
+        fileName: file.name,
+        fileType: file.name.split('.').pop(),
+        fileSize: file.size,
+        extractedText: '', // You may want to add OCR later
+      };
+
+      console.log('Sending report data:', reportData);
+      const result = await reportsApi.upload(reportData);
+      console.log('Upload result:', result);
+      
+      if (result.success || result.report) {
+        loadReports(activeProfile._id);
+        alert('Report uploaded and analyzed successfully!');
+      } else {
+        alert('Failed to upload report: ' + (result.message || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Failed to upload report:', error);
+      alert('Failed to upload report: ' + error.message);
+    } finally {
+      setUploadingReport(false);
+      e.target.value = ''; // Reset file input
+    }
+  };
+
+  const handleAddFamilyMember = async (e) => {
+    e.preventDefault();
+    try {
+      const userId = user?._id || user?.id;
+      console.log('Current user:', user);
+      console.log('User ID being used:', userId);
+      
+      const profileData = {
+        ...newFamilyMember,
+        userId: userId,
+        relationship: newFamilyMember.relationship.toLowerCase(),
+        gender: newFamilyMember.gender.toLowerCase(),
+      };
+
+      console.log('Creating family member with data:', profileData);
+      const result = await patientProfilesApi.create(profileData);
+      console.log('Create result:', result);
+      
+      if (result.patientProfile || result.success) {
+        loadProfiles();
+        setShowAddFamilyModal(false);
+        setNewFamilyMember({
+          name: '',
+          relationship: '',
+          dateOfBirth: '',
+          bloodGroup: '',
+          gender: '',
+        });
+        alert('Family member added successfully!');
+      } else {
+        alert('Failed to add family member: ' + (result.message || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Failed to add family member:', error);
+      alert('Failed to add family member: ' + error.message);
+    }
+  };
+
+  const calculateAge = (dateOfBirth) => {
+    if (!dateOfBirth) return 'N/A';
+    const today = new Date();
+    const birthDate = new Date(dateOfBirth);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const getLatestReadingByType = (type) => {
+    return healthReadings.find(r => r.type === type);
+  };
+
+  // Transform health readings data for chart display
+  const getHealthMetricsChartData = () => {
+    if (!healthReadings || healthReadings.length === 0) {
+      return [];
+    }
+
+    console.log('Health readings for chart:', healthReadings);
+
+    // Get unique dates from readings
+    const readingsByDate = {};
+    
+    healthReadings.forEach(reading => {
+      const date = new Date(reading.measuredAt);
+      const dateKey = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+      
+      if (!readingsByDate[dateKey]) {
+        readingsByDate[dateKey] = {
+          m: dateKey,
+          weight: null,
+          bp: null,
+          sugar: null,
+          bmi: null,
+        };
+      }
+
+      if (reading.type === 'weight' && reading.value) {
+        readingsByDate[dateKey].weight = reading.value;
+      } else if (reading.type === 'blood_pressure' && reading.systolic) {
+        readingsByDate[dateKey].bp = reading.systolic;
+      } else if (reading.type === 'blood_sugar' && reading.value) {
+        readingsByDate[dateKey].sugar = reading.value;
+      } else if (reading.type === 'bmi' && reading.value) {
+        readingsByDate[dateKey].bmi = reading.value;
+      }
+    });
+
+    console.log('Chart data:', Object.values(readingsByDate));
+
+    // Convert to array and sort by date
+    return Object.values(readingsByDate).sort((a, b) => {
+      const dateA = new Date(a.m);
+      const dateB = new Date(b.m);
+      return dateA - dateB;
+    });
+  };
+
   const doctorNames = {
     doc1: "Dr. Sarah Johnson", doc2: "Dr. Michael Chen",
     doc3: "Dr. Emily Rodriguez", doc4: "Dr. James Wilson",
@@ -621,65 +891,408 @@ function PatientDashboard({ currentUser }) {
       ]
     : patient.upcoming;
 
+  // Dynamic metrics based on real data
+  const dynamicMetrics = [
+    { label: "Medical Reports", value: reports.length.toString(), change: null, icon: FileText },
+    { label: "Upcoming Appointments", value: "2", change: null, icon: CalendarCheck },
+    { label: "Lab Bookings", value: "1", change: null, icon: FlaskConical },
+    { label: "Active Prescriptions", value: "3", change: null, icon: Pill },
+    { label: "Medicine Orders", value: "2", change: null, icon: Package },
+    { label: "Recent Readings", value: healthReadings.length.toString(), change: null, icon: ActivityIcon },
+  ];
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Header with Profile Switcher */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: C.text }}>
+            Welcome back, {user?.name || 'Patient'}!
+          </h2>
+          <p style={{ margin: "4px 0 0", fontSize: 13, color: C.muted }}>
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </p>
+        </div>
+        
+        {/* Profile Switcher */}
+        {profiles.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: C.muted }}>Viewing:</span>
+            <select
+              value={activeProfile?._id}
+              onChange={(e) => setActiveProfile(profiles.find(p => p._id === e.target.value))}
+              style={{
+                padding: "8px 12px",
+                borderRadius: 8,
+                border: `1.5px solid ${C.secondary}`,
+                background: C.card,
+                fontSize: 13,
+                fontWeight: 600,
+                color: C.text,
+                cursor: "pointer",
+              }}
+            >
+              {profiles.map(profile => (
+                <option key={profile._id} value={profile._id}>
+                  {profile.name} ({profile.relationship})
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={() => {/* TODO: Open add profile modal */}}
+              style={{
+                padding: "8px",
+                borderRadius: 8,
+                border: `1.5px solid ${C.secondary}`,
+                background: C.card,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <UserPlus size={16} color={C.primaryDark} />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Statistics Cards */}
       <div style={grid(3)} className="responsive-grid-6">
-        {patient.metrics.map((m, i) => (
+        {dynamicMetrics.map((m, i) => (
           <MetricCard key={i} m={m} />
         ))}
       </div>
+
+      {/* Quick Actions */}
+      <div style={grid(6)} className="responsive-grid-6">
+        <QuickActions
+          actions={[
+            { 
+              icon: Upload, 
+              label: "Upload Report",
+              onClick: () => setShowUploadModal(true)
+            },
+            { icon: CalendarCheck, label: "Book Appointment" },
+            { icon: FlaskConical, label: "Book Lab Test" },
+            { icon: Pill, label: "Order Medicines" },
+            { icon: ActivityIcon, label: "Add Reading", onClick: () => setShowAddReadingModal(true) },
+            { icon: UserPlus, label: "Add Family Member", onClick: () => setShowAddFamilyModal(true) },
+          ]}
+        />
+      </div>
+
+      {/* Medical Reports Panel */}
+      <Panel title="Medical Reports" subtitle="AI-analyzed reports">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <p style={{ margin: 0, fontSize: 12, color: C.muted }}>
+            You have {reports.length} report(s) uploaded
+          </p>
+          <button
+            onClick={() => navigate('/medical-reports')}
+            style={{
+              padding: "8px 16px",
+              borderRadius: 8,
+              border: `1.5px solid ${C.primary}`,
+              background: "transparent",
+              color: C.primary,
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = C.primary; e.currentTarget.style.color = "white"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.primary; }}
+          >
+            View All Reports
+          </button>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, maxHeight: 250, overflowY: "auto" }}>
+          {reports.length === 0 ? (
+            <p style={{ margin: 0, fontSize: 12, color: C.muted, textAlign: "center", padding: 20 }}>
+              No reports uploaded yet. Click "Upload Report" to add your first report.
+            </p>
+          ) : (
+            reports.slice(0, 3).map((report) => (
+              <div
+                key={report._id}
+                style={{
+                  padding: 12,
+                  borderRadius: 8,
+                  border: `1px solid ${C.secondary}`,
+                  background: C.card,
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+                onClick={() => navigate('/medical-reports')}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text }}>{report.title}</p>
+                    <p style={{ margin: "4px 0 0", fontSize: 11, color: C.muted }}>{report.category}</p>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      padding: "3px 8px",
+                      borderRadius: 12,
+                      background: report.aiOverallStatus === 'Normal' ? '#E4F1EA' : 
+                                 report.aiOverallStatus === 'Needs Attention' ? '#FFF4E5' :
+                                 report.aiOverallStatus === 'Concerning' ? '#FEE2E2' : '#FECACA',
+                      color: report.aiOverallStatus === 'Normal' ? '#2E6B4E' :
+                             report.aiOverallStatus === 'Needs Attention' ? '#92400E' :
+                             report.aiOverallStatus === 'Concerning' ? '#991B1B' : '#7F1D1D',
+                    }}
+                  >
+                    {report.aiOverallStatus || 'Normal'}
+                  </span>
+                </div>
+                {report.aiSummary && (
+                  <p style={{ margin: "8px 0 0", fontSize: 11, color: C.muted, lineHeight: 1.4 }}>
+                    {report.aiSummary.substring(0, 80)}...
+                  </p>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </Panel>
+
+      {/* Health Monitoring & Medical Reports */}
       <div style={grid(2)} className="responsive-grid-2">
         <Panel title="Health metrics over time" subtitle="Weight (kg), BP (systolic), sugar (mg/dL)">
           <ResponsiveContainer width="100%" height={230}>
-            <LineChart data={patient.healthMetrics} margin={{ top: 5, right: 10, left: -18, bottom: 0 }}>
+            <LineChart data={getHealthMetricsChartData()} margin={{ top: 5, right: 10, left: -18, bottom: 0 }}>
               <CartesianGrid stroke={C.secondary} vertical={false} />
               <XAxis dataKey="m" tick={{ fontSize: 11, fill: C.muted }} axisLine={{ stroke: C.secondary }} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: C.muted }} axisLine={false} tickLine={false} />
               <Tooltip {...tooltipStyle} />
               <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ fontSize: 11, color: C.muted }}>{v}</span>} />
-              <Line type="monotone" dataKey="weight" name="Weight" stroke={C.primary} strokeWidth={2.5} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="bp" name="Blood pressure" stroke={C.primaryDark} strokeWidth={2.5} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="sugar" name="Sugar" stroke="#C9A24E" strokeWidth={2.5} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="weight" name="Weight" stroke={C.primary} strokeWidth={2.5} dot={{ r: 3 }} connectNulls={false} />
+              <Line type="monotone" dataKey="bp" name="Blood pressure" stroke={C.primaryDark} strokeWidth={2.5} dot={{ r: 3 }} connectNulls={false} />
+              <Line type="monotone" dataKey="sugar" name="Sugar" stroke="#C9A24E" strokeWidth={2.5} dot={{ r: 3 }} connectNulls={false} />
             </LineChart>
           </ResponsiveContainer>
         </Panel>
-        <Panel title="Appointment history" subtitle="Visits per month">
-          <BarC data={patient.apptHistory} xKey="m" yKey="v" />
-        </Panel>
-        <Panel title="Medication schedule">
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr>
-                  {["Medication", "Time", "Refill"].map((h) => (
-                    <th key={h} style={{ textAlign: "left", padding: "6px 8px", color: C.muted, fontWeight: 700, fontSize: 11.5, borderBottom: `1px solid ${C.secondary}` }}>
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {patient.medications.map((med, i) => (
-                  <tr key={i}>
-                    <td style={{ padding: "8px", color: C.text, fontWeight: 600, borderBottom: `1px solid ${C.secondary}` }}>{med.name}</td>
-                    <td style={{ padding: "8px", color: C.muted, borderBottom: `1px solid ${C.secondary}` }}>{med.time}</td>
-                    <td style={{ padding: "8px", color: C.primaryDark, fontWeight: 600, borderBottom: `1px solid ${C.secondary}` }}>{med.refill}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+        {/* Current Health Readings */}
+        <Panel title="Current Health Readings" subtitle="Latest recorded values">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {(() => {
+              const bpReading = getLatestReadingByType('blood_pressure');
+              const sugarReading = getLatestReadingByType('blood_sugar');
+              const weightReading = getLatestReadingByType('weight');
+              const bmiReading = getLatestReadingByType('bmi');
+
+              return (
+                <>
+                  {/* Blood Pressure */}
+                  <div style={{ padding: 12, borderRadius: 8, background: C.secondary, border: `1px solid ${C.secondary}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <HeartPulse size={16} color={C.primaryDark} />
+                      <span style={{ fontSize: 12, fontWeight: 600, color: C.muted }}>Blood Pressure</span>
+                    </div>
+                    {bpReading ? (
+                      <div>
+                        <span style={{ fontSize: 20, fontWeight: 700, color: C.text }}>
+                          {bpReading.systolic}/{bpReading.diastolic}
+                        </span>
+                        <span style={{ fontSize: 12, color: C.muted, marginLeft: 4 }}>mmHg</span>
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: 12, color: C.muted }}>No reading recorded</span>
+                    )}
+                  </div>
+
+                  {/* Blood Sugar */}
+                  <div style={{ padding: 12, borderRadius: 8, background: C.secondary, border: `1px solid ${C.secondary}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <Droplet size={16} color="#C9A24E" />
+                      <span style={{ fontSize: 12, fontWeight: 600, color: C.muted }}>Blood Sugar</span>
+                    </div>
+                    {sugarReading ? (
+                      <div>
+                        <span style={{ fontSize: 20, fontWeight: 700, color: C.text }}>
+                          {sugarReading.value}
+                        </span>
+                        <span style={{ fontSize: 12, color: C.muted, marginLeft: 4 }}>{sugarReading.unit}</span>
+                        {sugarReading.mealContext && (
+                          <span style={{ fontSize: 10, color: C.muted, marginLeft: 8 }}>
+                            ({sugarReading.mealContext})
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: 12, color: C.muted }}>No reading recorded</span>
+                    )}
+                  </div>
+
+                  {/* Weight */}
+                  <div style={{ padding: 12, borderRadius: 8, background: C.secondary, border: `1px solid ${C.secondary}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <Scale size={16} color={C.primary} />
+                      <span style={{ fontSize: 12, fontWeight: 600, color: C.muted }}>Weight</span>
+                    </div>
+                    {weightReading ? (
+                      <div>
+                        <span style={{ fontSize: 20, fontWeight: 700, color: C.text }}>
+                          {weightReading.value}
+                        </span>
+                        <span style={{ fontSize: 12, color: C.muted, marginLeft: 4 }}>{weightReading.unit}</span>
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: 12, color: C.muted }}>No reading recorded</span>
+                    )}
+                  </div>
+
+                  {/* BMI */}
+                  <div style={{ padding: 12, borderRadius: 8, background: C.secondary, border: `1px solid ${C.secondary}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <Activity size={16} color={C.accent} />
+                      <span style={{ fontSize: 12, fontWeight: 600, color: C.muted }}>BMI</span>
+                    </div>
+                    {bmiReading ? (
+                      <div>
+                        <span style={{ fontSize: 20, fontWeight: 700, color: C.text }}>
+                          {bmiReading.value}
+                        </span>
+                        <span style={{ fontSize: 12, color: C.muted, marginLeft: 4 }}>{bmiReading.unit}</span>
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: 12, color: C.muted }}>No reading recorded</span>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </Panel>
-        <Panel title="Lab test results" subtitle="Latest readings">
-          <BarC data={patient.labResults} xKey="t" yKey="v" color={C.accent} />
-        </Panel>
-        <Panel title="Doctor visit frequency">
-          <BarC data={patient.doctorVisits} xKey="d" yKey="v" horizontal color={C.primaryDark} />
-        </Panel>
-        <Panel title="Health trend" subtitle="Overall health score">
-          <AreaC data={patient.healthTrend} xKey="m" yKey="v" color={C.primary} />
+      </div>
+
+      {/* AI Health Insights */}
+      <Panel title="AI Health Insights" subtitle="Powered by AI analysis">
+        <div style={{ padding: 16, background: "#F0F7F9", borderRadius: 12, border: `1px solid ${C.secondary}` }}>
+          <p style={{ margin: 0, fontSize: 13, color: C.text, fontWeight: 600, marginBottom: 8 }}>
+            📊 Health Summary
+          </p>
+          <p style={{ margin: "0 0 12px", fontSize: 12, color: C.muted }}>
+            Based on your recent health readings, your blood pressure and blood sugar levels are within normal ranges. 
+            Continue maintaining your current lifestyle and medication schedule.
+          </p>
+          <p style={{ margin: 0, fontSize: 11, color: C.primaryDark, fontStyle: "italic" }}>
+            ⚠️ Disclaimer: AI insights are for informational purposes only and should not replace professional medical advice.
+          </p>
+        </div>
+      </Panel>
+
+      {/* Family Profiles */}
+      <Panel title="Family Profiles" subtitle="Manage your family members">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
+          {profiles.map(profile => (
+            <div
+              key={profile._id}
+              style={{
+                padding: 16,
+                borderRadius: 12,
+                border: `1px solid ${C.secondary}`,
+                background: C.card,
+                cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+              onClick={() => setActiveProfile(profile)}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <div style={{ width: 40, height: 40, borderRadius: "50%", background: C.secondary, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: C.primaryDark }}>
+                    {profile.name.charAt(0)}
+                  </span>
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text }}>{profile.name}</p>
+                  <p style={{ margin: 0, fontSize: 11, color: C.muted }}>{profile.relationship}</p>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, fontSize: 11, color: C.muted }}>
+                <span>Blood: {profile.bloodGroup}</span>
+                <span>Age: {calculateAge(profile.dateOfBirth)}</span>
+              </div>
+            </div>
+          ))}
+          <button
+            onClick={() => setShowAddFamilyModal(true)}
+            style={{
+              padding: 16,
+              borderRadius: 12,
+              border: `1.5px dashed ${C.secondary}`,
+              background: "transparent",
+              cursor: "pointer",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 8,
+              color: C.muted,
+            }}
+          >
+            <UserPlus size={24} />
+            <span style={{ fontSize: 12, fontWeight: 600 }}>Add Family Member</span>
+          </button>
+        </div>
+      </Panel>
+
+      {/* Notifications & Emergency Info */}
+      <div style={grid(2)} className="responsive-grid-2">
+        <ListPanel
+          title="Notifications"
+          items={notifications.slice(0, 5)}
+          render={(n) => (
+            <>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text }}>{n.title}</p>
+              <p style={{ margin: "2px 0 0", fontSize: 11.5, color: C.muted }}>{n.message}</p>
+            </>
+          )}
+        />
+        <Panel title="Emergency Information" subtitle="Quick access to critical info">
+          {activeProfile && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: C.muted, marginBottom: 4 }}>BLOOD GROUP</p>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.text }}>{activeProfile.bloodGroup}</p>
+              </div>
+              <div>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: C.muted, marginBottom: 4 }}>ALLERGIES</p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                  {activeProfile.allergies?.length > 0 ? (
+                    activeProfile.allergies.map((allergy, i) => (
+                      <span key={i} style={{ padding: "4px 8px", borderRadius: 12, background: "#F7E7E1", color: "#8C4A32", fontSize: 11, fontWeight: 600 }}>
+                        {allergy}
+                      </span>
+                    ))
+                  ) : (
+                    <span style={{ fontSize: 12, color: C.muted }}>No known allergies</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: C.muted, marginBottom: 4 }}>MEDICAL CONDITIONS</p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                  {activeProfile.medicalConditions?.length > 0 ? (
+                    activeProfile.medicalConditions.map((condition, i) => (
+                      <span key={i} style={{ padding: "4px 8px", borderRadius: 12, background: "#E4F1EA", color: "#2E6B4E", fontSize: 11, fontWeight: 600 }}>
+                        {condition}
+                      </span>
+                    ))
+                  ) : (
+                    <span style={{ fontSize: 12, color: C.muted }}>No known conditions</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </Panel>
       </div>
+
+      {/* Upcoming Appointments */}
       <div style={grid(3)} className="responsive-grid-3">
         <ListPanel
           title="Upcoming appointments"
@@ -704,14 +1317,229 @@ function PatientDashboard({ currentUser }) {
             ))}
           </div>
         </Panel>
-        <QuickActions
-          actions={[
-            { icon: CalendarCheck, label: "Book appointment" },
-            { icon: FileText, label: "View reports" },
-            { icon: Pill, label: "Refill prescription" },
-          ]}
-        />
+        <Panel title="Lab test results" subtitle="Recent test results">
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {reports.slice(0, 3).map((report) => (
+              <div key={report._id} style={{ padding: 8, borderRadius: 6, background: C.secondary, border: `1px solid ${C.secondary}` }}>
+                <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: C.text }}>{report.title}</p>
+                <p style={{ margin: 0, fontSize: 11, color: C.muted }}>{report.category}</p>
+              </div>
+            ))}
+          </div>
+        </Panel>
       </div>
+
+      {/* Add Family Member Modal */}
+      {showAddFamilyModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => setShowAddFamilyModal(false)}
+        >
+          <div
+            style={{
+              background: C.card,
+              borderRadius: 16,
+              padding: 24,
+              width: '100%',
+              maxWidth: 400,
+              maxHeight: '90vh',
+              overflowY: 'auto',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 700, color: C.text }}>
+              Add Family Member
+            </h3>
+            <form onSubmit={handleAddFamilyMember} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.muted, marginBottom: 4 }}>
+                  Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newFamilyMember.name}
+                  onChange={(e) => setNewFamilyMember({ ...newFamilyMember, name: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: `1.5px solid ${C.secondary}`,
+                    background: C.bg,
+                    color: C.text,
+                    fontSize: 13,
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.muted, marginBottom: 4 }}>
+                  Relationship *
+                </label>
+                <select
+                  required
+                  value={newFamilyMember.relationship}
+                  onChange={(e) => setNewFamilyMember({ ...newFamilyMember, relationship: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: `1.5px solid ${C.secondary}`,
+                    background: C.bg,
+                    color: C.text,
+                    fontSize: 13,
+                  }}
+                >
+                  <option value="">Select relationship</option>
+                  <option value="self">Self</option>
+                  <option value="spouse">Spouse</option>
+                  <option value="child">Child</option>
+                  <option value="mother">Mother</option>
+                  <option value="father">Father</option>
+                  <option value="sibling">Sibling</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.muted, marginBottom: 4 }}>
+                  Date of Birth *
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={newFamilyMember.dateOfBirth}
+                  onChange={(e) => setNewFamilyMember({ ...newFamilyMember, dateOfBirth: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: `1.5px solid ${C.secondary}`,
+                    background: C.bg,
+                    color: C.text,
+                    fontSize: 13,
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.muted, marginBottom: 4 }}>
+                  Blood Group
+                </label>
+                <select
+                  value={newFamilyMember.bloodGroup}
+                  onChange={(e) => setNewFamilyMember({ ...newFamilyMember, bloodGroup: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: `1.5px solid ${C.secondary}`,
+                    background: C.bg,
+                    color: C.text,
+                    fontSize: 13,
+                  }}
+                >
+                  <option value="">Select blood group</option>
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: C.muted, marginBottom: 4 }}>
+                  Gender
+                </label>
+                <select
+                  value={newFamilyMember.gender}
+                  onChange={(e) => setNewFamilyMember({ ...newFamilyMember, gender: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: `1.5px solid ${C.secondary}`,
+                    background: C.bg,
+                    color: C.text,
+                    fontSize: 13,
+                  }}
+                >
+                  <option value="">Select gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowAddFamilyModal(false)}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    borderRadius: 8,
+                    border: `1.5px solid ${C.secondary}`,
+                    background: 'transparent',
+                    color: C.text,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    borderRadius: 8,
+                    border: 'none',
+                    background: C.primary,
+                    color: 'white',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Add Member
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Report Modal */}
+      <QuickActionUploadReport
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        profileId={activeProfile?._id}
+        onSuccess={() => {
+          loadReports(activeProfile._id);
+        }}
+      />
+
+      {/* Add Health Reading Modal */}
+      <AddHealthReadingModal
+        isOpen={showAddReadingModal}
+        onClose={() => setShowAddReadingModal(false)}
+        profileId={activeProfile?._id}
+        onAdd={() => {
+          loadHealthReadings(activeProfile._id);
+        }}
+      />
     </div>
   );
 }

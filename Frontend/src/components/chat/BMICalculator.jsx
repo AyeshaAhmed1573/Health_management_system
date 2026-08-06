@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Info, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Info, TrendingUp, TrendingDown, Minus, CheckCircle } from "lucide-react";
 import { RadialBarChart, RadialBar, ResponsiveContainer, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import { healthReadingsApi } from "@/lib/api";
+import { useAuth } from "@/lib/authContext";
 
 const BMI_CATEGORIES = [
   { min: 0, max: 18.5, label: "Underweight", color: "#5FAFB6", advice: "Consider speaking with a nutritionist to develop a healthy weight gain plan. Increase caloric intake with nutrient-dense foods." },
@@ -14,7 +16,8 @@ function getCategory(bmi) {
   return BMI_CATEGORIES.find(c => bmi >= c.min && bmi < c.max) || BMI_CATEGORIES[BMI_CATEGORIES.length - 1];
 }
 
-export function BMICalculator() {
+export function BMICalculator({ profileId }) {
+  const { user } = useAuth();
   const [unit, setUnit] = useState("metric");
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
@@ -23,6 +26,8 @@ export function BMICalculator() {
   const [age, setAge] = useState("");
   const [gender, setGender] = useState("");
   const [bmi, setBmi] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   function calculate() {
     let h = 0, w = parseFloat(weight);
@@ -33,7 +38,54 @@ export function BMICalculator() {
       w = w * 0.453592;
     }
     if (h > 0 && w > 0) setBmi(Math.round((w / (h * h)) * 10) / 10);
+    setSaved(false);
   }
+
+  const saveToDashboard = async () => {
+    if (!bmi || !profileId) return;
+    
+    setSaving(true);
+    try {
+      // Convert height to cm for storage
+      const heightCm = unit === "metric" ? parseFloat(height) : 
+        ((parseFloat(heightFt) || 0) * 12 + (parseFloat(heightIn) || 0)) * 2.54;
+      
+      // Convert weight to kg for storage
+      const weightKg = unit === "metric" ? parseFloat(weight) : parseFloat(weight) * 0.453592;
+
+      // Save BMI reading
+      const bmiData = {
+        profileId,
+        type: 'bmi',
+        value: bmi,
+        unit: 'kg/m²',
+        measuredAt: new Date().toISOString(),
+      };
+      console.log('Saving BMI reading:', bmiData);
+      const bmiResponse = await healthReadingsApi.add(bmiData);
+      console.log('BMI save response:', bmiResponse);
+
+      // Save weight reading
+      const weightData = {
+        profileId,
+        type: 'weight',
+        value: weightKg,
+        unit: 'kg',
+        measuredAt: new Date().toISOString(),
+      };
+      console.log('Saving weight reading:', weightData);
+      const weightResponse = await healthReadingsApi.add(weightData);
+      console.log('Weight save response:', weightResponse);
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (error) {
+      console.error('Failed to save BMI:', error);
+      alert('Failed to save to dashboard. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const category = bmi ? getCategory(bmi) : null;
   const gaugeValue = bmi ? Math.min(Math.max(((bmi - 10) / 30) * 100, 5), 95) : 0;
@@ -204,6 +256,31 @@ export function BMICalculator() {
                   </strong>. This is the range associated with the lowest health risks.
                 </p>
               </div>
+
+              {/* Save to Dashboard button */}
+              {profileId && (
+                <button
+                  onClick={saveToDashboard}
+                  disabled={saving || saved}
+                  className="w-full py-3.5 rounded-xl text-sm font-bold transition-all hover:opacity-90 active:scale-[0.98] flex items-center justify-center gap-2"
+                  style={{ 
+                    background: saved ? "#2F8F8F" : "var(--primary)", 
+                    color: "white",
+                    opacity: saving ? 0.7 : 1
+                  }}
+                >
+                  {saved ? (
+                    <>
+                      <CheckCircle size={16} />
+                      Saved to Dashboard
+                    </>
+                  ) : saving ? (
+                    'Saving...'
+                  ) : (
+                    'Save to Dashboard'
+                  )}
+                </button>
+              )}
             </>
           )}
         </div>

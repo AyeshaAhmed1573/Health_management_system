@@ -151,27 +151,54 @@ export default function ReportUpload({ open, onOpenChange, profiles, activeProfi
     let pid = selectedProfileId || activeProfileId || profiles?.[0]?.id || profiles?.[0]?._id;
     if (pid) return pid;
 
-    // Create a quick default profile on the backend
+    // Try to fetch existing profiles first
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const userId = user._id || user.id;
+    
+    if (userId) {
+      try {
+        const res = await fetch(`http://localhost:5000/api/profiles/user/${userId}`, {
+          headers: { ...(token && { "Authorization": `Bearer ${token}` }) },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.patientProfiles && data.patientProfiles.length > 0) {
+            const existingId = data.patientProfiles[0]._id || data.patientProfiles[0].id;
+            return existingId;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to fetch existing profiles:', e);
+      }
+    }
+
+    // Only create a new profile if absolutely necessary
     setStatusMessage("Creating patient profile...");
     const profileName = newProfileName.trim() || "My Health Record";
     
-    // Fetch logged in user id if needed or post to /api/patients
-    const res = await fetch("/api/patients", {
+    const res = await fetch("http://localhost:5000/api/profiles", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: profileName, relationship: "self" }),
+      headers: { 
+        "Content-Type": "application/json",
+        ...(token && { "Authorization": `Bearer ${token}` }),
+      },
+      body: JSON.stringify({ 
+        name: profileName, 
+        relationship: "self",
+        userId: userId 
+      }),
       credentials: "include",
     });
 
     if (!res.ok) {
-      // If error creating profile, throw
       const err = await res.json().catch(() => ({}));
       throw new Error(err.message || "Please create a patient profile first in Family Profiles.");
     }
 
     const data = await res.json();
     const createdId = data.patientProfile?._id || data.patientProfile?.id || data._id || data.id;
-    queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/profiles"] });
     return createdId;
   };
 
@@ -219,9 +246,13 @@ export default function ReportUpload({ open, onOpenChange, profiles, activeProfi
         extractedText,
       };
 
-      const response = await fetch("/api/reports", {
+      const token = localStorage.getItem('token');
+      const response = await fetch("http://localhost:5000/api/reports", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(token && { "Authorization": `Bearer ${token}` }),
+        },
         body: JSON.stringify(payload),
         credentials: "include",
       });

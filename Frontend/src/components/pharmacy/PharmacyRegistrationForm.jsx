@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Check } from 'lucide-react';
+import { Check, AlertCircle } from 'lucide-react';
 import { PharmacyInformation } from './PharmacyInformation';
 import { ContactDetails } from './ContactDetails';
 import { UploadDocuments } from './UploadDocuments';
 import { AccountSetup } from './AccountSetup';
 import { SuccessMessage } from './SuccessMessage';
+import { useAuth } from '@/lib/authContext';
 
 const steps = [
   { id: 1, title: 'Pharmacy Information' },
@@ -14,8 +15,11 @@ const steps = [
 ];
 
 export function PharmacyRegistrationForm() {
+  const { register } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     pharmacyName: '',
     licenseNumber: '',
@@ -57,8 +61,38 @@ export function PharmacyRegistrationForm() {
     }
   };
 
-  const handleSubmit = () => {
-    setIsSubmitted(true);
+  const handleSubmit = async () => {
+    setError('');
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    setLoading(true);
+
+    const result = await register(
+      {
+        name: formData.pharmacyName,
+        email: formData.contactEmail,
+        password: formData.password,
+        phone: formData.contactPhone,
+      },
+      'pharmacy'
+    );
+
+    if (result.success) {
+      setIsSubmitted(true);
+    } else {
+      setError(result.error);
+    }
+
+    setLoading(false);
   };
 
   const updateFormData = (field, value) => {
@@ -193,7 +227,7 @@ export function PharmacyRegistrationForm() {
             <UploadDocuments formData={formData} updateFormData={updateFormData} />
           )}
           {currentStep === 4 && (
-            <AccountSetup formData={formData} updateFormData={updateFormData} />
+            <AccountSetup formData={formData} updateFormData={updateFormData} error={error} loading={loading} />
           )}
 
           {/* Navigation Buttons */}
@@ -217,15 +251,15 @@ export function PharmacyRegistrationForm() {
             {currentStep === 4 ? (
               <button
                 onClick={handleSubmit}
-                disabled={!formData.termsAccepted}
+                disabled={!formData.termsAccepted || loading}
                 className="px-6 py-3 rounded-lg transition-all duration-200"
                 style={{
                   backgroundColor: formData.termsAccepted ? '#6FB3B5' : '#DCE8EE',
                   color: '#FFFFFF',
-                  cursor: formData.termsAccepted ? 'pointer' : 'not-allowed',
+                  cursor: formData.termsAccepted && !loading ? 'pointer' : 'not-allowed',
                 }}
               >
-                Submit for Verification
+                {loading ? 'Submitting...' : 'Submit for Verification'}
               </button>
             ) : (
               <button

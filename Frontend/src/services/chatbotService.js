@@ -58,7 +58,7 @@ const authenticatedFetch = async (url, options = {}) => {
 export const chatbotService = {
   // Create a new chat session
   createSession: async (title = 'New Conversation') => {
-    return authenticatedFetch('/api/chatbot/sessions', {
+    return authenticatedFetch('/chatbot/sessions', {
       method: 'POST',
       body: JSON.stringify({ title }),
     });
@@ -66,21 +66,21 @@ export const chatbotService = {
 
   // Get all user sessions
   getSessions: async () => {
-    return authenticatedFetch('/api/chatbot/sessions', {
+    return authenticatedFetch('/chatbot/sessions', {
       method: 'GET',
     });
   },
 
   // Get chat history for a specific session
   getChatHistory: async (sessionId) => {
-    return authenticatedFetch(`/api/chatbot/sessions/${sessionId}`, {
+    return authenticatedFetch(`/chatbot/sessions/${sessionId}`, {
       method: 'GET',
     });
   },
 
   // Send a message in a session
   sendMessage: async (sessionId, message) => {
-    return authenticatedFetch(`/api/chatbot/sessions/${sessionId}/message`, {
+    return authenticatedFetch(`/chatbot/sessions/${sessionId}/message`, {
       method: 'POST',
       body: JSON.stringify({ message }),
     });
@@ -88,14 +88,14 @@ export const chatbotService = {
 
   // Clear messages in a session
   clearMessages: async (sessionId) => {
-    return authenticatedFetch(`/api/chatbot/sessions/${sessionId}/messages`, {
+    return authenticatedFetch(`/chatbot/sessions/${sessionId}/messages`, {
       method: 'DELETE',
     });
   },
 
   // Delete a session
   deleteSession: async (sessionId) => {
-    return authenticatedFetch(`/api/chatbot/sessions/${sessionId}`, {
+    return authenticatedFetch(`/chatbot/sessions/${sessionId}`, {
       method: 'DELETE',
     });
   },
