@@ -710,7 +710,12 @@ function PatientDashboard({ currentUser }) {
 
   const loadNotifications = async () => {
     try {
-      const data = await notificationsApi.getByUser(user._id);
+      const userId = user?._id || user?.id;
+      if (!userId) {
+        console.log('No user ID available for notifications');
+        return;
+      }
+      const data = await notificationsApi.getByUser(userId);
       if (data.notifications) {
         setNotifications(data.notifications);
         setUnreadCount(data.unreadCount || 0);
@@ -839,12 +844,12 @@ function PatientDashboard({ currentUser }) {
 
     console.log('Health readings for chart:', healthReadings);
 
-    // Get unique dates from readings
+    // Get unique dates from readings (by day, not month)
     const readingsByDate = {};
     
     healthReadings.forEach(reading => {
       const date = new Date(reading.measuredAt);
-      const dateKey = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+      const dateKey = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       
       if (!readingsByDate[dateKey]) {
         readingsByDate[dateKey] = {

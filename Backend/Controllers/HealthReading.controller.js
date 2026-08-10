@@ -6,18 +6,34 @@ export async function addHealthReading(req, res) {
   try {
     const { userId, profileId, type, systolic, diastolic, value, unit, measuredAt, mealContext, notes } = req.body;
 
+    console.log('Received health reading request:', { userId, profileId, type, systolic, diastolic, value, unit, measuredAt, mealContext, notes });
+
     const targetUserId = userId || req.user?.id || req.user?._id;
+    console.log('Target userId:', targetUserId);
+    
     if (!targetUserId) {
+      console.log('User ID missing');
       return res.status(400).json({ message: 'User ID is required' });
     }
 
     if (!profileId) {
+      console.log('Profile ID missing');
       return res.status(400).json({ message: 'Profile ID is required' });
     }
 
     // Validate profile belongs to user
+    console.log('Looking for profile with _id:', profileId, 'and userId:', targetUserId);
     const profile = await PatientProfile.findOne({ _id: profileId, userId: targetUserId });
+    console.log('Found profile:', profile);
+    
     if (!profile) {
+      console.log('Profile validation failed');
+      // Try to find profile by ID alone to see if it exists
+      const profileExists = await PatientProfile.findById(profileId);
+      console.log('Profile exists check:', profileExists);
+      if (profileExists) {
+        console.log('Profile userId:', profileExists.userId, 'targetUserId:', targetUserId);
+      }
       return res.status(403).json({ message: 'Profile not found or does not belong to user' });
     }
 
@@ -45,11 +61,14 @@ export async function addHealthReading(req, res) {
       notes,
     });
 
+    console.log('Health reading created:', healthReading);
+
     res.status(201).json({
       message: 'Health reading added successfully',
       healthReading,
     });
   } catch (err) {
+    console.error('Error adding health reading:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 }
@@ -58,7 +77,7 @@ export async function addHealthReading(req, res) {
 export async function getHealthReadingsByProfile(req, res) {
   try {
     const { profileId } = req.params;
-    const { type, startDate, endDate, limit = 50 } = req.query;
+    const { type, startDate, endDate, limit = 100 } = req.query;
 
     const filter = { profileId };
     if (type) filter.type = type;

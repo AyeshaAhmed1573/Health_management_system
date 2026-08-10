@@ -172,7 +172,7 @@ export function BMICalculator({ profileId }) {
               </div>
             </div>
 
-            <button onClick={calculate} className="w-full py-3.5 rounded-xl text-sm font-bold transition-all hover:opacity-90 active:scale-[0.98]" style={{ background: "var(--primary)", color: "white" }}>
+            <button onClick={calculate} className="w-full py-3.5 rounded-xl text-sm font-bold transition-all hover:opacity-90 active:scale-[0.98]" style={{ background: "#2F8F8F", color: "white" }}>
               Calculate BMI
             </button>
           </div>

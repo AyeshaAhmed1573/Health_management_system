@@ -158,7 +158,7 @@ export function BloodSugar({ profileId }) {
               disabled={!value || saving || saved}
               className="w-full py-3.5 rounded-xl text-sm font-bold transition-all hover:opacity-90 active:scale-[0.98] flex items-center justify-center gap-2"
               style={{ 
-                background: saved ? "#2F8F8F" : "var(--primary)", 
+                background: saved ? "#2F8F8F" : "#2F8F8F", 
                 color: "white",
                 opacity: !value || saving ? 0.5 : 1
               }}

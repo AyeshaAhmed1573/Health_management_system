@@ -14,10 +14,16 @@ export default function BloodPressurePage() {
 
   const loadProfiles = async () => {
     try {
-      const data = await patientProfilesApi.getByUser(user._id);
-      if (data.profiles) {
-        setProfiles(data.profiles);
-        setActiveProfile(data.profiles[0]);
+      const userId = user?._id || user?.id;
+      console.log('Loading profiles for userId:', userId);
+      if (!userId) {
+        console.error('User ID is undefined');
+        return;
+      }
+      const data = await patientProfilesApi.getAll(userId);
+      if (data.patientProfiles) {
+        setProfiles(data.patientProfiles);
+        setActiveProfile(data.patientProfiles[0]);
       }
     } catch (error) {
       console.error('Failed to load profiles:', error);
