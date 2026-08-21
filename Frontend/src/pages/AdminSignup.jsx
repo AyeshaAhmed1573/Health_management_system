@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
-import { useAuth } from '@/lib/authContext';
-import { HeartPulse, UserPlus, AlertCircle, ShieldCheck } from 'lucide-react';
+import { HeartPulse, UserPlus, AlertCircle, ShieldCheck, Key } from 'lucide-react';
 
 const C = {
   primary: '#6FB3B5',
@@ -14,15 +13,17 @@ const C = {
   primaryDark: '#4E8C8E',
 };
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 export default function AdminSignup() {
   const [, navigate] = useLocation();
-  const { register } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     confirmPassword: '',
     phone: '',
+    adminSecretKey: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -45,22 +46,41 @@ export default function AdminSignup() {
       return;
     }
 
+    if (!formData.adminSecretKey) {
+      setError('Admin passcode is required');
+      return;
+    }
+
     setLoading(true);
 
-    const result = await register(
-      {
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-        phone: formData.phone,
-      },
-      'admin'
-    );
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone,
+          adminSecretKey: formData.adminSecretKey,
+        }),
+      });
 
-    if (result.success) {
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Admin signup failed');
+      }
+
+      // Store token and user data
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+
       navigate('/admin-login');
-    } else {
-      setError(result.error);
+    } catch (err) {
+      setError(err.message);
     }
 
     setLoading(false);
@@ -249,6 +269,47 @@ export default function AdminSignup() {
                 }}
                 required
               />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: C.text, marginBottom: 7 }}>
+                Admin Passcode
+              </label>
+              <div style={{ position: 'relative' }}>
+                <Key 
+                  size={16} 
+                  color={C.muted} 
+                  style={{ 
+                    position: 'absolute', 
+                    left: 14, 
+                    top: '50%', 
+                    transform: 'translateY(-50%)' 
+                  }} 
+                />
+                <input
+                  type="password"
+                  name="adminSecretKey"
+                  value={formData.adminSecretKey}
+                  onChange={handleChange}
+                  placeholder="Enter admin passcode"
+                  style={{
+                    width: '100%',
+                    padding: '11px 14px 11px 40px',
+                    borderRadius: 10,
+                    border: `1.5px solid ${C.secondary}`,
+                    background: C.bg,
+                    fontSize: 13.5,
+                    fontFamily: 'inherit',
+                    fontWeight: 600,
+                    color: C.text,
+                    outline: 'none',
+                  }}
+                  required
+                />
+              </div>
+              <p style={{ margin: '5px 0 0', fontSize: 11, color: C.muted }}>
+                Contact system administrator for the admin passcode
+              </p>
             </div>
 
             {error && (

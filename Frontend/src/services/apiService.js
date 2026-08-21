@@ -1,5 +1,60 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+// Admin Service
+export const adminService = {
+  signup: async (userData) => {
+    const response = await fetch(`${API_BASE_URL}/admin/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData),
+    });
+    if (!response.ok) throw new Error('Failed to signup admin');
+    return response.json();
+  },
+
+  getDashboardStats: async (token) => {
+    const response = await fetch(`${API_BASE_URL}/admin/dashboard/stats`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error('Failed to fetch dashboard stats');
+    return response.json();
+  },
+
+  getPendingApprovals: async (token) => {
+    const response = await fetch(`${API_BASE_URL}/admin/approvals/pending`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error('Failed to fetch pending approvals');
+    return response.json();
+  },
+
+  approveEntity: async (entityType, entityId, token, verificationNote) => {
+    const response = await fetch(`${API_BASE_URL}/admin/${entityType}/${entityId}/approve`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ verificationNote }),
+    });
+    if (!response.ok) throw new Error('Failed to approve entity');
+    return response.json();
+  },
+
+  rejectEntity: async (entityType, entityId, token, verificationNote) => {
+    const response = await fetch(`${API_BASE_URL}/admin/${entityType}/${entityId}/reject`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ verificationNote }),
+    });
+    if (!response.ok) throw new Error('Failed to reject entity');
+    return response.json();
+  },
+};
+
 // Doctor Service
 export const doctorService = {
   getAllDoctors: async (params = {}) => {

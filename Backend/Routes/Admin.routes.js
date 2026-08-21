@@ -1,6 +1,7 @@
 import { Router } from 'express';
 const router = Router();
 import {
+  adminSignup,
   getAllPendingApprovals,
   getAllApprovedEntities,
   getAllRejectedEntities,
@@ -13,6 +14,9 @@ import {
   getAdminDashboardStats,
 } from '../Controllers/Admin.controller.js';
 import { protect, restrictTo } from '../Middleware/Auth.middleware.js';
+
+// Public admin signup route
+router.post('/signup', adminSignup);
 
 // Admin dashboard routes (require authentication and admin role)
 router.get('/dashboard/stats', protect, restrictTo('admin'), getAdminDashboardStats);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -11,7 +11,7 @@ import {
   TrendingDown, Bell, Search, Plus, Package, AlertTriangle, CheckCircle2,
   UserCog, ClipboardList, Beaker, Menu, X, HeartPulse, Syringe, ChevronRight,
   Settings, ShieldCheck, LogOut, UserPlus, Upload, Activity as ActivityIcon,
-  Droplet, Scale,
+  Droplet, Scale, Eye, CheckCircle, XCircle, RefreshCw,
 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { patientProfilesApi, healthReadingsApi, notificationsApi, reportsApi } from "@/lib/api";
@@ -469,70 +469,716 @@ const grid = (cols) => ({
 /* ---------------------------------- Dashboards ---------------------------------- */
 
 function AdminDashboard() {
+  const { token } = useAuth();
+  const [stats, setStats] = useState(null);
+  const [pendingApprovals, setPendingApprovals] = useState(null);
+  const [allRequests, setAllRequests] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [selectedEntity, setSelectedEntity] = useState(null);
+  const [showDetails, setShowDetails] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    try {
+      const [statsRes, pendingRes, approvedRes, rejectedRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/admin/dashboard/stats`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`${API_BASE_URL}/admin/approvals/pending`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`${API_BASE_URL}/admin/approvals/approved`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`${API_BASE_URL}/admin/approvals/rejected`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ]);
+
+      if (statsRes.ok && pendingRes.ok && approvedRes.ok && rejectedRes.ok) {
+        const statsData = await statsRes.json();
+        const pendingData = await pendingRes.json();
+        const approvedData = await approvedRes.json();
+        const rejectedData = await rejectedRes.json();
+        
+        setStats(statsData);
+        setPendingApprovals(pendingData);
+        
+        // Combine all requests into a single structure
+        const allRequests = {
+          doctors: [
+            ...pendingData.pendingDoctors.map(d => ({...d, status: 'pending'})),
+            ...approvedData.approvedDoctors.map(d => ({...d, status: 'approved'})),
+            ...rejectedData.rejectedDoctors.map(d => ({...d, status: 'rejected'}))
+          ],
+          laboratories: [
+            ...pendingData.pendingLaboratories.map(l => ({...l, status: 'pending'})),
+            ...approvedData.approvedLaboratories.map(l => ({...l, status: 'approved'})),
+            ...rejectedData.rejectedLaboratories.map(l => ({...l, status: 'rejected'}))
+          ],
+          pharmacies: [
+            ...pendingData.pendingPharmacies.map(p => ({...p, status: 'pending'})),
+            ...approvedData.approvedPharmacies.map(p => ({...p, status: 'approved'})),
+            ...rejectedData.rejectedPharmacies.map(p => ({...p, status: 'rejected'}))
+          ]
+        };
+        
+        setAllRequests(allRequests);
+      }
+    } catch (error) {
+      console.error('Failed to fetch dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApprove = async (entityType, entityId) => {
+    setActionLoading(true);
+    try {
+      const endpoint = `${API_BASE_URL}/admin/${entityType}/${entityId}/approve`;
+      const response = await fetch(endpoint, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ verificationNote: 'Approved by admin' })
+      });
+
+      if (response.ok) {
+        fetchDashboardData();
+        setShowDetails(false);
+      }
+    } catch (error) {
+      console.error('Failed to approve:', error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleReject = async (entityType, entityId) => {
+    setActionLoading(true);
+    try {
+      const endpoint = `${API_BASE_URL}/admin/${entityType}/${entityId}/reject`;
+      const response = await fetch(endpoint, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ verificationNote: 'Rejected by admin' })
+      });
+
+      if (response.ok) {
+        fetchDashboardData();
+        setShowDetails(false);
+      }
+    } catch (error) {
+      console.error('Failed to reject:', error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const realMetrics = [
+    { label: "Total Requests", value: (stats?.pending?.total || 0) + (stats?.approved?.total || 0) + (stats?.rejected?.total || 0), change: null, icon: ClipboardList },
+    { label: "Pending Approvals", value: stats?.pending?.total || 0, change: null, icon: Clock },
+    { label: "Approved Requests", value: stats?.approved?.total || 0, change: null, icon: CheckCircle2 },
+    { label: "Rejected Requests", value: stats?.rejected?.total || 0, change: null, icon: XCircle },
+    { label: "Total Doctors", value: stats?.approved?.doctors || 0, change: null, icon: Stethoscope },
+    { label: "Total Laboratories", value: stats?.approved?.laboratories || 0, change: null, icon: FlaskConical },
+  ];
+
+  const StatusBadge = ({ status }) => {
+    const statusConfig = {
+      approved: {
+        background: '#dcfce7',
+        color: '#166534',
+        label: 'Approved'
+      },
+      pending: {
+        background: '#fef9c3',
+        color: '#854d0e',
+        label: 'Pending'
+      },
+      rejected: {
+        background: '#fee2e2',
+        color: '#991b1b',
+        label: 'Rejected'
+      }
+    };
+
+    const config = statusConfig[status] || statusConfig.pending;
+
+    return (
+      <span
+        style={{
+          fontSize: 11,
+          fontWeight: 700,
+          padding: '4px 10px',
+          borderRadius: 12,
+          background: config.background,
+          color: config.color,
+          textTransform: 'capitalize',
+        }}
+      >
+        {config.label}
+      </span>
+    );
+  };
+
+  const EntityCard = ({ entity, type }) => {
+    const Icon = type === 'doctors' ? Stethoscope : type === 'laboratories' ? FlaskConical : Pill;
+    const getTypeLabel = () => type === 'doctors' ? 'Doctor' : type === 'laboratories' ? 'Laboratory' : 'Pharmacy';
+    const status = entity.status || 'pending';
+    
+    return (
+      <div
+        style={{
+          background: C.card,
+          borderRadius: 12,
+          padding: 16,
+          border: `1px solid ${C.secondary}`,
+          cursor: 'pointer',
+          transition: 'all 0.2s',
+        }}
+        onClick={() => { setSelectedEntity({ ...entity, type }); setShowDetails(true); }}
+        onMouseEnter={(e) => e.currentTarget.style.borderColor = C.primary}
+        onMouseLeave={(e) => e.currentTarget.style.borderColor = C.secondary}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 8,
+              background: C.primary + '20',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Icon size={18} color={C.primary} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.text }}>
+              {entity.userId?.name || 'Unknown'}
+            </p>
+            <p style={{ margin: '2px 0 0', fontSize: 11, color: C.muted }}>
+              {getTypeLabel()}
+            </p>
+          </div>
+          <StatusBadge status={status} />
+        </div>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <FileText size={12} color={C.muted} />
+            <span style={{ fontSize: 11, color: C.muted }}>
+              {entity.licenseNumber || entity.registrationNumber || 'N/A'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Activity size={12} color={C.muted} />
+            <span style={{ fontSize: 11, color: C.muted }}>
+              {entity.hospitalName || entity.labName || entity.pharmacyName || 'N/A'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Clock size={12} color={C.muted} />
+            <span style={{ fontSize: 11, color: C.muted }}>
+              {new Date(entity.createdAt).toLocaleDateString()}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
+        <RefreshCw size={32} color={C.primary} style={{ animation: 'spin 1s linear infinite' }} />
+        <p style={{ marginLeft: 16, color: C.muted, fontWeight: 600 }}>Loading dashboard...</p>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Stats Grid */}
       <div style={grid(3)} className="responsive-grid-6">
-        {admin.metrics.map((m, i) => (
+        {realMetrics.map((m, i) => (
           <MetricCard key={i} m={m} />
         ))}
       </div>
-      <div style={grid(2)} className="responsive-grid-2">
-        <Panel title="Revenue trend" subtitle="Monthly, in thousands USD">
-          <LineC data={admin.revenueTrend} xKey="m" yKey="v" unit="k" />
-        </Panel>
-        <Panel title="Patient growth" subtitle="Active patients per month">
-          <AreaC data={admin.patientGrowth} xKey="m" yKey="v" />
-        </Panel>
-        <Panel title="Department performance" subtitle="Efficiency score out of 100">
-          <BarC data={admin.deptPerf} xKey="d" yKey="v" />
-        </Panel>
-        <Panel title="Resource utilization" subtitle="Share of total resources">
-          <PieC data={admin.resourceUse} nameKey="n" valueKey="v" />
-        </Panel>
-        <Panel title="Staff distribution" subtitle="Headcount by role">
-          <BarC data={admin.staffDist} xKey="r" yKey="v" horizontal color={C.accent} />
-        </Panel>
-        <Panel title="Appointment trends" subtitle="Monthly appointment volume">
-          <BarC data={admin.apptTrend} xKey="m" yKey="v" color={C.primaryDark} />
-        </Panel>
-      </div>
-      <div style={grid(3)} className="responsive-grid-3">
-        <ListPanel
-          title="Recent activity"
-          items={admin.activities}
-          render={(a) => (
-            <>
-              <p style={{ margin: 0, fontSize: 13, color: C.text }}>{a.txt}</p>
-              <p style={{ margin: "2px 0 0", fontSize: 11.5, color: C.muted }}>{a.t}</p>
-            </>
-          )}
-        />
-        <Panel title="System health">
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {admin.systemHealth.map((s, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 13, color: C.text }}>{s.n}</span>
-                <span
-                  style={{
-                    fontSize: 11.5, fontWeight: 700, padding: "3px 10px", borderRadius: 20,
-                    color: s.ok ? "#2E6B4E" : "#8C4A32",
-                    background: s.ok ? "#E4F1EA" : "#F7E7E1",
-                  }}
-                >
-                  {s.ok ? "Operational" : "Attention"}
-                </span>
-              </div>
+
+      {/* Tabs */}
+      <div style={{ borderBottom: `2px solid ${C.secondary}`, paddingBottom: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {['overview', 'doctors', 'laboratories', 'pharmacies'].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: activeTab === tab ? C.primary : 'transparent',
+                  color: activeTab === tab ? '#fff' : C.muted,
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                  textTransform: 'capitalize',
+                }}
+              >
+                {tab}
+              </button>
             ))}
           </div>
-        </Panel>
-        <QuickActions
-          actions={[
-            { icon: Stethoscope, label: "Add doctor" },
-            { icon: UserCog, label: "Add staff" },
-            { icon: FileText, label: "Generate report" },
-          ]}
-        />
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: C.muted }}>Filter by status:</span>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{
+                padding: '8px 12px',
+                borderRadius: 8,
+                border: `1.5px solid ${C.secondary}`,
+                background: C.card,
+                fontSize: 13,
+                fontWeight: 600,
+                color: C.text,
+                cursor: 'pointer',
+              }}
+            >
+              <option value="all">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+        </div>
       </div>
+
+      {/* Content Area */}
+      <div>
+        {activeTab === 'overview' && (
+          <div>
+            <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 700, color: C.text }}>
+              All Requests Overview
+            </h3>
+            {!allRequests || 
+              (allRequests.doctors.length === 0 && 
+               allRequests.laboratories.length === 0 && 
+               allRequests.pharmacies.length === 0) ? (
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: 40,
+                  background: C.card,
+                  borderRadius: 12,
+                  border: `1px solid ${C.secondary}`,
+                }}
+              >
+                <CheckCircle2 size={48} color={C.up} style={{ marginBottom: 16 }} />
+                <p style={{ margin: 0, fontSize: 14, color: C.muted, fontWeight: 600 }}>
+                  No requests found
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+                {allRequests?.doctors
+                  .filter(doctor => statusFilter === 'all' || doctor.status === statusFilter)
+                  .map((doctor) => (
+                  <EntityCard key={doctor._id} entity={doctor} type="doctors" />
+                ))}
+                {allRequests?.laboratories
+                  .filter(lab => statusFilter === 'all' || lab.status === statusFilter)
+                  .map((lab) => (
+                  <EntityCard key={lab._id} entity={lab} type="laboratories" />
+                ))}
+                {allRequests?.pharmacies
+                  .filter(pharmacy => statusFilter === 'all' || pharmacy.status === statusFilter)
+                  .map((pharmacy) => (
+                  <EntityCard key={pharmacy._id} entity={pharmacy} type="pharmacies" />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'doctors' && (
+          <div>
+            <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 700, color: C.text }}>
+              All Doctor Requests
+            </h3>
+            {!allRequests?.doctors || allRequests.doctors.length === 0 ? (
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: 40,
+                  background: C.card,
+                  borderRadius: 12,
+                  border: `1px solid ${C.secondary}`,
+                }}
+              >
+                <CheckCircle2 size={48} color={C.up} style={{ marginBottom: 16 }} />
+                <p style={{ margin: 0, fontSize: 14, color: C.muted, fontWeight: 600 }}>
+                  No doctor requests found
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+                {allRequests?.doctors
+                  .filter(doctor => statusFilter === 'all' || doctor.status === statusFilter)
+                  .map((doctor) => (
+                  <EntityCard key={doctor._id} entity={doctor} type="doctors" />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'laboratories' && (
+          <div>
+            <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 700, color: C.text }}>
+              All Laboratory Requests
+            </h3>
+            {!allRequests?.laboratories || allRequests.laboratories.length === 0 ? (
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: 40,
+                  background: C.card,
+                  borderRadius: 12,
+                  border: `1px solid ${C.secondary}`,
+                }}
+              >
+                <CheckCircle2 size={48} color={C.up} style={{ marginBottom: 16 }} />
+                <p style={{ margin: 0, fontSize: 14, color: C.muted, fontWeight: 600 }}>
+                  No laboratory requests found
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+                {allRequests?.laboratories
+                  .filter(lab => statusFilter === 'all' || lab.status === statusFilter)
+                  .map((lab) => (
+                  <EntityCard key={lab._id} entity={lab} type="laboratories" />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'pharmacies' && (
+          <div>
+            <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 700, color: C.text }}>
+              All Pharmacy Requests
+            </h3>
+            {!allRequests?.pharmacies || allRequests.pharmacies.length === 0 ? (
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: 40,
+                  background: C.card,
+                  borderRadius: 12,
+                  border: `1px solid ${C.secondary}`,
+                }}
+              >
+                <CheckCircle2 size={48} color={C.up} style={{ marginBottom: 16 }} />
+                <p style={{ margin: 0, fontSize: 14, color: C.muted, fontWeight: 600 }}>
+                  No pharmacy requests found
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+                {allRequests?.pharmacies
+                  .filter(pharmacy => statusFilter === 'all' || pharmacy.status === statusFilter)
+                  .map((pharmacy) => (
+                  <EntityCard key={pharmacy._id} entity={pharmacy} type="pharmacies" />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Entity Details Modal */}
+      {showDetails && selectedEntity && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => setShowDetails(false)}
+        >
+          <div
+            style={{
+              background: C.card,
+              borderRadius: 16,
+              padding: 24,
+              maxWidth: 500,
+              width: '90%',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: C.text }}>
+                  {selectedEntity.type === 'doctors' ? 'Doctor' : selectedEntity.type === 'laboratories' ? 'Laboratory' : 'Pharmacy'} Details
+                </h3>
+                {selectedEntity.status && (
+                  <div style={{ marginTop: 8 }}>
+                    <StatusBadge status={selectedEntity.status} />
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => setShowDetails(false)}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  border: 'none',
+                  background: C.bg,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <X size={18} color={C.muted} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 4, display: 'block' }}>
+                  Name
+                </label>
+                <p style={{ margin: 0, fontSize: 14, color: C.text, fontWeight: 600 }}>
+                  {selectedEntity.userId?.name || 'N/A'}
+                </p>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 4, display: 'block' }}>
+                  Email
+                </label>
+                <p style={{ margin: 0, fontSize: 14, color: C.text, fontWeight: 600 }}>
+                  {selectedEntity.userId?.email || 'N/A'}
+                </p>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 4, display: 'block' }}>
+                  Phone
+                </label>
+                <p style={{ margin: 0, fontSize: 14, color: C.text, fontWeight: 600 }}>
+                  {selectedEntity.userId?.phone || 'N/A'}
+                </p>
+              </div>
+
+              {selectedEntity.licenseNumber && (
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 4, display: 'block' }}>
+                    License Number
+                  </label>
+                  <p style={{ margin: 0, fontSize: 14, color: C.text, fontWeight: 600 }}>
+                    {selectedEntity.licenseNumber}
+                  </p>
+                </div>
+              )}
+
+              {selectedEntity.registrationNumber && (
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 4, display: 'block' }}>
+                    Registration Number
+                  </label>
+                  <p style={{ margin: 0, fontSize: 14, color: C.text, fontWeight: 600 }}>
+                    {selectedEntity.registrationNumber}
+                  </p>
+                </div>
+              )}
+
+              {selectedEntity.specialization && (
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 4, display: 'block' }}>
+                    Specialization
+                  </label>
+                  <p style={{ margin: 0, fontSize: 14, color: C.text, fontWeight: 600 }}>
+                    {selectedEntity.specialization}
+                  </p>
+                </div>
+              )}
+
+              {selectedEntity.hospitalName && (
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 4, display: 'block' }}>
+                    Hospital/Clinic Name
+                  </label>
+                  <p style={{ margin: 0, fontSize: 14, color: C.text, fontWeight: 600 }}>
+                    {selectedEntity.hospitalName}
+                  </p>
+                </div>
+              )}
+
+              {selectedEntity.labName && (
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 4, display: 'block' }}>
+                    Laboratory Name
+                  </label>
+                  <p style={{ margin: 0, fontSize: 14, color: C.text, fontWeight: 600 }}>
+                    {selectedEntity.labName}
+                  </p>
+                </div>
+              )}
+
+              {selectedEntity.pharmacyName && (
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 4, display: 'block' }}>
+                    Pharmacy Name
+                  </label>
+                  <p style={{ margin: 0, fontSize: 14, color: C.text, fontWeight: 600 }}>
+                    {selectedEntity.pharmacyName}
+                  </p>
+                </div>
+              )}
+
+              {selectedEntity.documents && selectedEntity.documents.length > 0 && (
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 4, display: 'block' }}>
+                    Documents
+                  </label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {selectedEntity.documents.map((doc, index) => (
+                      <a
+                        key={index}
+                        href={doc}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: 6,
+                          background: C.primary + '15',
+                          color: C.primary,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          textDecoration: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
+                      >
+                        <Eye size={12} />
+                        Document {index + 1}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+              {selectedEntity.status === 'pending' ? (
+                <>
+                  <button
+                    onClick={() => handleApprove(selectedEntity.type, selectedEntity._id)}
+                    disabled={actionLoading}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      borderRadius: 8,
+                      border: 'none',
+                      background: C.up,
+                      color: '#fff',
+                      fontWeight: 700,
+                      fontSize: 14,
+                      cursor: actionLoading ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      opacity: actionLoading ? 0.7 : 1,
+                    }}
+                  >
+                    <CheckCircle size={16} />
+                    {actionLoading ? 'Processing...' : 'Approve'}
+                  </button>
+                  <button
+                    onClick={() => handleReject(selectedEntity.type, selectedEntity._id)}
+                    disabled={actionLoading}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      borderRadius: 8,
+                      border: 'none',
+                      background: C.down,
+                      color: '#fff',
+                      fontWeight: 700,
+                      fontSize: 14,
+                      cursor: actionLoading ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      opacity: actionLoading ? 0.7 : 1,
+                    }}
+                  >
+                    <XCircle size={16} />
+                    {actionLoading ? 'Processing...' : 'Reject'}
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setShowDetails(false)}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    borderRadius: 8,
+                    border: `1px solid ${C.secondary}`,
+                    background: C.bg,
+                    color: C.text,
+                    fontWeight: 700,
+                    fontSize: 14,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <Eye size={16} color={C.muted} />
+                  Close
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1727,11 +2373,109 @@ function subtitleFor(user) {
 }
 
 export default function HealthcarePlatform({ currentUser }) {
-  const { logout } = useAuth();
+  const { logout, token } = useAuth();
   const [navOpen, setNavOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const notificationRef = useRef(null);
   const role = currentUser.role;
   const meta = ROLE_META[role];
   const Icon = meta.icon;
+
+  // Load notifications for admin users
+  useEffect(() => {
+    if (role === 'admin' && token) {
+      loadAdminNotifications();
+    }
+  }, [role, token]);
+
+  const loadAdminNotifications = async () => {
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${API_BASE_URL}/admin/approvals/pending`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const notificationList = [];
+        
+        data.pendingDoctors?.forEach(doctor => {
+          notificationList.push({
+            id: doctor._id,
+            type: 'doctor',
+            message: `New doctor registration: ${doctor.userId?.name || 'Unknown'}`,
+            timestamp: doctor.createdAt,
+            read: false
+          });
+        });
+        
+        data.pendingLaboratories?.forEach(lab => {
+          notificationList.push({
+            id: lab._id,
+            type: 'laboratory',
+            message: `New laboratory registration: ${lab.userId?.name || 'Unknown'}`,
+            timestamp: lab.createdAt,
+            read: false
+          });
+        });
+        
+        data.pendingPharmacies?.forEach(pharmacy => {
+          notificationList.push({
+            id: pharmacy._id,
+            type: 'pharmacy',
+            message: `New pharmacy registration: ${pharmacy.userId?.name || 'Unknown'}`,
+            timestamp: pharmacy.createdAt,
+            read: false
+          });
+        });
+        
+        setNotifications(notificationList.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
+        setUnreadCount(data.totalPending || 0);
+      }
+    } catch (error) {
+      console.error('Failed to load admin notifications:', error);
+    }
+  };
+
+  const markAsRead = (notificationId) => {
+    setNotifications(prev => 
+      prev.map(notif => 
+        notif.id === notificationId ? { ...notif, read: true } : notif
+      )
+    );
+    setUnreadCount(prev => Math.max(0, prev - 1));
+  };
+
+  const markAllAsRead = () => {
+    setNotifications(prev => prev.map(notif => ({ ...notif, read: true })));
+    setUnreadCount(0);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setNotificationOpen(false);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setNotificationOpen(false);
+      }
+    };
+
+    if (notificationOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [notificationOpen]);
 
   const dashboards = {
     admin:    <AdminDashboard />,
@@ -1865,10 +2609,107 @@ export default function HealthcarePlatform({ currentUser }) {
                   }}
                 />
               </div>
-              <button style={{ position: "relative", background: C.bg, border: `1px solid ${C.secondary}`, borderRadius: 10, width: 36, height: 36, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Bell size={16} color={C.muted} />
-                <span style={{ position: "absolute", top: 6, right: 7, width: 7, height: 7, borderRadius: "50%", background: C.down }} />
-              </button>
+              <div style={{ position: "relative" }} ref={notificationRef}>
+                <button 
+                  onClick={() => setNotificationOpen(!notificationOpen)}
+                  style={{ position: "relative", background: C.bg, border: `1px solid ${C.secondary}`, borderRadius: 10, width: 36, height: 36, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  aria-label="Notifications"
+                  role="button"
+                >
+                  <Bell size={16} color={C.muted} />
+                  {unreadCount > 0 && (
+                    <span style={{ position: "absolute", top: 6, right: 7, width: 7, height: 7, borderRadius: "50%", background: C.down }} />
+                  )}
+                </button>
+                
+                {notificationOpen && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "calc(100% + 8px)",
+                      right: 0,
+                      width: 320,
+                      background: C.card,
+                      borderRadius: 12,
+                      border: `1px solid ${C.secondary}`,
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                      zIndex: 1000,
+                      maxHeight: 400,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.secondary}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.text }}>Notifications</h4>
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={markAllAsRead}
+                          style={{
+                            padding: "4px 8px",
+                            borderRadius: 6,
+                            border: "none",
+                            background: C.primary + "15",
+                            color: C.primary,
+                            fontSize: 11,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Mark all as read
+                        </button>
+                      )}
+                    </div>
+                    
+                    <div style={{ maxHeight: 300, overflowY: "auto" }}>
+                      {notifications.length === 0 ? (
+                        <div style={{ padding: 24, textAlign: "center" }}>
+                          <CheckCircle2 size={32} color={C.up} style={{ marginBottom: 8 }} />
+                          <p style={{ margin: 0, fontSize: 12, color: C.muted, fontWeight: 600 }}>No new notifications</p>
+                        </div>
+                      ) : (
+                        notifications.map((notification) => (
+                          <div
+                            key={notification.id}
+                            onClick={() => {
+                              markAsRead(notification.id);
+                              setNotificationOpen(false);
+                            }}
+                            style={{
+                              padding: "12px 16px",
+                              borderBottom: `1px solid ${C.secondary}`,
+                              cursor: "pointer",
+                              background: notification.read ? "transparent" : C.primary + "08",
+                              transition: "background 0.2s",
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = C.secondary}
+                            onMouseLeave={(e) => e.currentTarget.style.background = notification.read ? "transparent" : C.primary + "08"}
+                          >
+                            <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                              <div
+                                style={{
+                                  width: 8,
+                                  height: 8,
+                                  borderRadius: "50%",
+                                  background: notification.read ? "transparent" : C.down,
+                                  marginTop: 6,
+                                  flexShrink: 0,
+                                }}
+                              />
+                              <div style={{ flex: 1 }}>
+                                <p style={{ margin: 0, fontSize: 12, color: C.text, fontWeight: notification.read ? 400 : 600 }}>
+                                  {notification.message}
+                                </p>
+                                <p style={{ margin: "4px 0 0", fontSize: 10, color: C.muted }}>
+                                  {notification.timestamp ? new Date(notification.timestamp).toLocaleString() : 'Just now'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
               <div
                 style={{
                   width: 36, height: 36, borderRadius: "50%", background: C.primary,

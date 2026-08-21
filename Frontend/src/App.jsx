@@ -33,6 +33,7 @@ import PatientLogin from "@/pages/PatientLogin";
 import LaboratoryLogin from "@/pages/LaboratoryLogin";
 import PharmacyLogin from "@/pages/PharmacyLogin";
 import AdminSignup from "@/pages/AdminSignup";
+// import AdminDashboard from "@/pages/AdminDashboard";
 import Dashboard from "@/pages/Dashboard";
 
 function Router() {
