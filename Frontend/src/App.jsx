@@ -72,21 +72,21 @@ function Router() {
         <Route path="/patient-login" component={PatientLogin} />
         <Route path="/lab-login" component={LaboratoryLogin} />
         <Route path="/pharmacy-login" component={PharmacyLogin} />
-        {/* Dashboard routes */}
+        {/* Dashboard routes with role-based access control */}
         <Route path="/admin/dashboard">
-          {() => user ? <Dashboard currentUser={user} /> : <NotFound />}
+          {() => user?.role === 'admin' ? <Dashboard currentUser={user} /> : <NotFound />}
         </Route>
         <Route path="/patient/dashboard">
-          {() => user ? <Dashboard currentUser={user} /> : <NotFound />}
+          {() => user?.role === 'patient' ? <Dashboard currentUser={user} /> : <NotFound />}
         </Route>
         <Route path="/doctor/dashboard">
-          {() => user ? <Dashboard currentUser={user} /> : <NotFound />}
+          {() => user?.role === 'doctor' ? <Dashboard currentUser={user} /> : <NotFound />}
         </Route>
         <Route path="/lab/dashboard">
-          {() => user ? <Dashboard currentUser={user} /> : <NotFound />}
+          {() => user?.role === 'laboratory' ? <Dashboard currentUser={user} /> : <NotFound />}
         </Route>
         <Route path="/pharmacy/dashboard">
-          {() => user ? <Dashboard currentUser={user} /> : <NotFound />}
+          {() => user?.role === 'pharmacy' ? <Dashboard currentUser={user} /> : <NotFound />}
         </Route>
         <Route component={NotFound} />
       </Switch>

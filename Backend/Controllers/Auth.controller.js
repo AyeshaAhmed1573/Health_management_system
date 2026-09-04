@@ -1,4 +1,7 @@
 import User from '../Models/User.model.js';  // ✅ default import
+import Doctor from '../Models/Doctor.model.js';
+import Laboratory from '../Models/Laboratory.model.js';
+import Pharmacy from '../Models/Pharmacy.model.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -49,6 +52,49 @@ export async function login(req, res) {
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch)
       return res.status(400).json({ message: 'Invalid email or password' });
+
+    // Check verification status for professional roles
+    if (user.role === 'doctor') {
+      const doctor = await Doctor.findOne({ userId: user._id });
+      if (doctor && doctor.verificationStatus === 'rejected') {
+        return res.status(403).json({ 
+          message: 'Your doctor registration has been rejected. Please contact support for assistance.' 
+        });
+      }
+      if (doctor && doctor.verificationStatus === 'pending') {
+        return res.status(403).json({ 
+          message: 'Your doctor registration is pending admin approval. Please wait for verification.' 
+        });
+      }
+    }
+
+    if (user.role === 'laboratory') {
+      const laboratory = await Laboratory.findOne({ userId: user._id });
+      if (laboratory && laboratory.verificationStatus === 'rejected') {
+        return res.status(403).json({ 
+          message: 'Your laboratory registration has been rejected. Please contact support for assistance.' 
+        });
+      }
+      if (laboratory && laboratory.verificationStatus === 'pending') {
+        return res.status(403).json({ 
+          message: 'Your laboratory registration is pending admin approval. Please wait for verification.' 
+        });
+      }
+    }
+
+    if (user.role === 'pharmacy') {
+      const pharmacy = await Pharmacy.findOne({ userId: user._id });
+      if (pharmacy && pharmacy.verificationStatus === 'rejected') {
+        return res.status(403).json({ 
+          message: 'Your pharmacy registration has been rejected. Please contact support for assistance.' 
+        });
+      }
+      if (pharmacy && pharmacy.verificationStatus === 'pending') {
+        return res.status(403).json({ 
+          message: 'Your pharmacy registration is pending admin approval. Please wait for verification.' 
+        });
+      }
+    }
 
     const token = generateToken(user);
 

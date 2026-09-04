@@ -11,7 +11,7 @@ import {
   TrendingDown, Bell, Search, Plus, Package, AlertTriangle, CheckCircle2,
   UserCog, ClipboardList, Beaker, Menu, X, HeartPulse, Syringe, ChevronRight,
   Settings, ShieldCheck, LogOut, UserPlus, Upload, Activity as ActivityIcon,
-  Droplet, Scale, Eye, CheckCircle, XCircle, RefreshCw,
+  Droplet, Scale, Eye, CheckCircle, XCircle, RefreshCw, Heart, Calculator,
 } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { patientProfilesApi, healthReadingsApi, notificationsApi, reportsApi } from "@/lib/api";
@@ -437,12 +437,13 @@ function ListPanel({ title, items, render, action }) {
 function QuickActions({ actions }) {
   return (
     <Panel title="Quick actions">
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
         {actions.map((a, i) => (
           <button
             key={i}
+            onClick={a.onClick}
             style={{
-              display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
+              display: "flex", alignItems: "center", gap: 8, padding: "10px 12px",
               background: C.bg, border: `1px solid ${C.secondary}`, borderRadius: 10,
               fontFamily: font, fontSize: 13, fontWeight: 600, color: C.text, cursor: "pointer",
               textAlign: "left",
@@ -452,7 +453,6 @@ function QuickActions({ actions }) {
           >
             <a.icon size={15} color={C.primaryDark} />
             {a.label}
-            <ChevronRight size={14} color={C.muted} style={{ marginLeft: "auto" }} />
           </button>
         ))}
       </div>
@@ -1616,22 +1616,20 @@ function PatientDashboard({ currentUser }) {
       </div>
 
       {/* Quick Actions */}
-      <div style={grid(6)} className="responsive-grid-6">
-        <QuickActions
-          actions={[
-            { 
-              icon: Upload, 
-              label: "Upload Report",
-              onClick: () => setShowUploadModal(true)
-            },
-            { icon: CalendarCheck, label: "Book Appointment" },
-            { icon: FlaskConical, label: "Book Lab Test" },
-            { icon: Pill, label: "Order Medicines" },
-            { icon: ActivityIcon, label: "Add Reading", onClick: () => setShowAddReadingModal(true) },
-            { icon: UserPlus, label: "Add Family Member", onClick: () => setShowAddFamilyModal(true) },
-          ]}
-        />
-      </div>
+      <QuickActions
+        actions={[
+          { 
+            icon: Upload, 
+            label: "Upload Report",
+            onClick: () => setShowUploadModal(true)
+          },
+          { icon: CalendarCheck, label: "Book Appointment" },
+          { icon: FlaskConical, label: "Book Lab Test" },
+          { icon: Pill, label: "Order Medicines" },
+          { icon: ActivityIcon, label: "Add Reading", onClick: () => setShowAddReadingModal(true) },
+          { icon: UserPlus, label: "Add Family Member", onClick: () => setShowAddFamilyModal(true) },
+        ]}
+      />
 
       {/* Medical Reports Panel */}
       <Panel title="Medical Reports" subtitle="AI-analyzed reports">

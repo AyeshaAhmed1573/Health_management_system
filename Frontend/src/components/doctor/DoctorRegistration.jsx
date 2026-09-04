@@ -60,20 +60,62 @@ export function DoctorRegistration() {
 
     setLoading(true);
 
-    const result = await register(
-      {
-        name: formData.fullName,
-        email: formData.email,
-        password: formData.password,
-        phone: formData.phone,
-      },
-      'doctor'
-    );
+    try {
+      // Step 1: Register user
+      const registerResult = await register(
+        {
+          name: formData.fullName,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone,
+        },
+        'doctor'
+      );
 
-    if (result.success) {
-      setIsSubmitted(true);
-    } else {
-      setError(result.error);
+      if (!registerResult.success) {
+        setError(registerResult.error);
+        setLoading(false);
+        return;
+      }
+
+      // Step 2: Create doctor profile with all details
+      const formDataToSend = new FormData();
+      formDataToSend.append('userId', registerResult.user.id);
+      formDataToSend.append('licenseNumber', formData.licenseNumber);
+      formDataToSend.append('specialization', formData.specialization);
+      formDataToSend.append('qualification', formData.medicalDegree?.name || '');
+      formDataToSend.append('experienceYears', formData.yearsExperience);
+      formDataToSend.append('consultationFee', '500');
+      formDataToSend.append('bio', 'Professional doctor');
+      
+      if (formData.profilePhoto) {
+        formDataToSend.append('profilePhoto', formData.profilePhoto);
+      }
+      if (formData.medicalDegree?.file) {
+        formDataToSend.append('medicalDegree', formData.medicalDegree.file);
+      }
+      if (formData.licenseCertificate) {
+        formDataToSend.append('licenseCertificate', formData.licenseCertificate);
+      }
+      if (formData.cnic) {
+        formDataToSend.append('cnic', formData.cnic);
+      }
+
+      const response = await fetch('http://localhost:5000/api/doctors/register', {
+        method: 'POST',
+        body: formDataToSend,
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setIsSubmitted(true);
+      } else {
+        setError(data.message || 'Failed to create doctor profile');
+      }
+    } catch (err) {
+      setError('An error occurred during registration');
+      console.error('Registration error:', err);
     }
 
     setLoading(false);

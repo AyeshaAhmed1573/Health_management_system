@@ -1,5 +1,71 @@
 import Doctor from '../Models/Doctor.model.js';
 import User from '../Models/User.model.js';
+import multer from 'multer';
+
+// Configure multer for file uploads
+const storage = multer.memoryStorage();
+export const upload = multer({ storage: storage });
+
+// DOCTOR REGISTRATION WITH DOCUMENTS
+export async function registerDoctor(req, res) {
+  try {
+    const { userId, licenseNumber, specialization, qualification, experienceYears, consultationFee, bio } = req.body;
+
+    // Check if user exists
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Check if doctor profile already exists
+    const existingDoctor = await Doctor.findOne({ userId });
+    if (existingDoctor) {
+      return res.status(400).json({ message: 'Doctor profile already exists for this user' });
+    }
+
+    // Check if license number is unique
+    const existingLicense = await Doctor.findOne({ licenseNumber });
+    if (existingLicense) {
+      return res.status(400).json({ message: 'License number already registered' });
+    }
+
+    const doctorData = {
+      userId,
+      licenseNumber,
+      specialization,
+      qualification,
+      experienceYears: parseInt(experienceYears) || 0,
+      consultationFee: parseInt(consultationFee) || 0,
+      bio,
+      verificationStatus: 'pending', // Default to pending for admin approval
+    };
+
+    // Handle file uploads if present
+    if (req.files) {
+      if (req.files.profilePhoto) {
+        doctorData.profileImageUrl = `data:${req.files.profilePhoto[0].mimetype};base64,${req.files.profilePhoto[0].buffer.toString('base64')}`;
+      }
+      if (req.files.medicalDegree) {
+        doctorData.medicalDegreeUrl = `data:${req.files.medicalDegree[0].mimetype};base64,${req.files.medicalDegree[0].buffer.toString('base64')}`;
+      }
+      if (req.files.licenseCertificate) {
+        doctorData.licenseCertificateUrl = `data:${req.files.licenseCertificate[0].mimetype};base64,${req.files.licenseCertificate[0].buffer.toString('base64')}`;
+      }
+      if (req.files.cnic) {
+        doctorData.cnicUrl = `data:${req.files.cnic[0].mimetype};base64,${req.files.cnic[0].buffer.toString('base64')}`;
+      }
+    }
+
+    const doctor = await Doctor.create(doctorData);
+
+    res.status(201).json({
+      success: true,
+      message: 'Doctor profile created successfully and pending admin approval',
+      doctor,
+    });
+  } catch (err) {
+    console.error('Doctor registration error:', err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+}
 
 // CREATE DOCTOR PROFILE
 export async function createDoctorProfile(req, res) {

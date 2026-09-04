@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Activity, Heart, Scale, Droplet } from 'lucide-react';
+import { X, Activity, Heart, Scale, Droplet, Calculator } from 'lucide-react';
 import { healthReadingsApi } from '@/lib/api';
 
 const COLORS = {
@@ -13,7 +13,7 @@ const COLORS = {
 };
 
 export default function AddHealthReadingModal({ isOpen, onClose, profileId, onAdd }) {
-  const [type, setType] = useState('blood_pressure');
+  const [type, setType] = useState('bmi');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -25,6 +25,8 @@ export default function AddHealthReadingModal({ isOpen, onClose, profileId, onAd
     mealContext: '',
     measuredAt: new Date().toISOString().slice(0, 16),
     notes: '',
+    height: '',
+    weight: '',
   });
 
   if (!isOpen) return null;
@@ -42,7 +44,24 @@ export default function AddHealthReadingModal({ isOpen, onClose, profileId, onAd
         notes: formData.notes,
       };
 
-      if (type === 'blood_pressure') {
+      if (type === 'bmi') {
+        if (!formData.height || !formData.weight) {
+          throw new Error('Height and weight are required for BMI calculation');
+        }
+        const heightM = parseFloat(formData.height) / 100;
+        const weightKg = parseFloat(formData.weight);
+        const bmi = (weightKg / (heightM * heightM)).toFixed(1);
+        readingData.value = parseFloat(bmi);
+        readingData.unit = 'kg/m²';
+        // Also save weight reading
+        await healthReadingsApi.add({
+          profileId,
+          type: 'weight',
+          value: weightKg,
+          unit: 'kg',
+          measuredAt: formData.measuredAt,
+        });
+      } else if (type === 'blood_pressure') {
         if (!formData.systolic || !formData.diastolic) {
           throw new Error('Systolic and diastolic values are required');
         }
@@ -85,6 +104,8 @@ export default function AddHealthReadingModal({ isOpen, onClose, profileId, onAd
       mealContext: '',
       measuredAt: new Date().toISOString().slice(0, 16),
       notes: '',
+      height: '',
+      weight: '',
     });
     setError('');
   };
@@ -94,7 +115,7 @@ export default function AddHealthReadingModal({ isOpen, onClose, profileId, onAd
       blood_pressure: 'mmHg',
       blood_sugar: 'mg/dL',
       weight: 'kg',
-      heart_rate: 'bpm',
+      bmi: 'kg/m²',
     };
     return units[type] || '';
   };
@@ -161,14 +182,60 @@ export default function AddHealthReadingModal({ isOpen, onClose, profileId, onAd
                 color: COLORS.text,
               }}
             >
+              <option value="bmi">BMI Calculator</option>
               <option value="blood_pressure">Blood Pressure</option>
               <option value="blood_sugar">Blood Sugar</option>
               <option value="weight">Weight</option>
-              <option value="heart_rate">Heart Rate</option>
             </select>
           </div>
 
-          {type === 'blood_pressure' ? (
+          {type === 'bmi' ? (
+            <>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: COLORS.text, marginBottom: 8 }}>
+                  Height (cm)
+                </label>
+                <input
+                  type="number"
+                  value={formData.height}
+                  onChange={(e) => setFormData({ ...formData, height: e.target.value })}
+                  placeholder="170"
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: `1.5px solid ${COLORS.secondary}`,
+                    background: COLORS.card,
+                    fontSize: 14,
+                    color: COLORS.text,
+                  }}
+                />
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: COLORS.text, marginBottom: 8 }}>
+                  Weight (kg)
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={formData.weight}
+                  onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                  placeholder="70"
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: `1.5px solid ${COLORS.secondary}`,
+                    background: COLORS.card,
+                    fontSize: 14,
+                    color: COLORS.text,
+                  }}
+                />
+              </div>
+            </>
+          ) : type === 'blood_pressure' ? (
             <>
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: COLORS.text, marginBottom: 8 }}>
@@ -264,11 +331,6 @@ export default function AddHealthReadingModal({ isOpen, onClose, profileId, onAd
                     <>
                       <option value="kg">kg</option>
                       <option value="lbs">lbs</option>
-                    </>
-                  )}
-                  {type === 'heart_rate' && (
-                    <>
-                      <option value="bpm">bpm</option>
                     </>
                   )}
                 </select>

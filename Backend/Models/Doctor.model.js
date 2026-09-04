@@ -53,6 +53,15 @@ const doctorSchema = new mongoose.Schema(
     profileImageUrl: {
       type: String,
     },
+    medicalDegreeUrl: {
+      type: String,
+    },
+    licenseCertificateUrl: {
+      type: String,
+    },
+    cnicUrl: {
+      type: String,
+    },
     availableSlots: [availableSlotSchema],
     verificationStatus: {
       type: String,
