@@ -10,6 +10,8 @@ import bcrypt from 'bcryptjs';
 
 import jwt from 'jsonwebtoken';
 
+import path from 'path';
+
 
 
 const generateToken = (user) => {
@@ -34,7 +36,16 @@ export async function register(req, res) {
 
   try {
 
-    const { name, email, password, phone, role, specialization, licenseNumber, qualification, experienceYears, labName, pharmacyName, address, hospital, clinic } = req.body;
+    const { name, email, password, phone, role, specialization, licenseNumber, qualification, experienceYears, labName, pharmacyName, address, hospital, clinic, consultationFee, bio, operatingHours } = req.body;
+
+    // Parse JSON strings that come from FormData
+    const parsedAddress = typeof address === 'string' ? JSON.parse(address) : address;
+    const parsedHospital = typeof hospital === 'string' ? JSON.parse(hospital) : hospital;
+    const parsedClinic = typeof clinic === 'string' ? JSON.parse(clinic) : clinic;
+    const parsedOperatingHours = typeof operatingHours === 'string' ? JSON.parse(operatingHours) : operatingHours;
+
+    console.log('Registration request body:', { name, email, phone, role, specialization, labName, pharmacyName });
+    console.log('Files received:', req.files);
 
 
 
@@ -56,7 +67,7 @@ export async function register(req, res) {
 
     const requiresApproval = rolesRequiringApproval.includes(role);
 
-    
+
 
     const user = await User.create({
 
@@ -72,44 +83,114 @@ export async function register(req, res) {
 
     if (role === 'doctor') {
 
+      // Build documents object from uploaded files
+      const documents = {};
+      if (req.files) {
+        if (req.files.licenseDocument && req.files.licenseDocument[0]) {
+          documents.licenseDocument = req.files.licenseDocument[0].filename;
+        }
+        if (req.files.medicalDegreeDocument && req.files.medicalDegreeDocument[0]) {
+          documents.medicalDegreeDocument = req.files.medicalDegreeDocument[0].filename;
+        }
+        if (req.files.hospitalProofDocument && req.files.hospitalProofDocument[0]) {
+          documents.hospitalProofDocument = req.files.hospitalProofDocument[0].filename;
+        }
+        if (req.files.clinicProofDocument && req.files.clinicProofDocument[0]) {
+          documents.clinicProofDocument = req.files.clinicProofDocument[0].filename;
+        }
+        if (req.files.idProofDocument && req.files.idProofDocument[0]) {
+          documents.idProofDocument = req.files.idProofDocument[0].filename;
+        }
+      }
+
+      console.log('Creating doctor profile with documents:', documents);
+
       await Doctor.create({
 
         userId: user._id,
 
-        licenseNumber: 'PENDING-' + Date.now(), // Temporary placeholder
+        licenseNumber: licenseNumber || 'PENDING-' + Date.now(),
 
-        specialization: 'Not specified',
+        specialization: specialization || 'Not specified',
 
-        qualification: 'Not specified',
+        qualification: qualification || 'Not specified',
+
+        experienceYears: experienceYears || 0,
+
+        consultationFee: consultationFee || 0,
+
+        bio: bio || '',
+
+        hospital: parsedHospital || {},
+
+        clinic: parsedClinic || {},
+
+        documents,
 
       });
 
     } else if (role === 'lab') {
+      // Build documents object from uploaded files for lab
+      const labDocuments = {};
+      if (req.files) {
+        if (req.files.licenseDocument && req.files.licenseDocument[0]) {
+          labDocuments.licenseDocument = req.files.licenseDocument[0].filename;
+        }
+        if (req.files.registrationDocument && req.files.registrationDocument[0]) {
+          labDocuments.registrationDocument = req.files.registrationDocument[0].filename;
+        }
+        if (req.files.addressProofDocument && req.files.addressProofDocument[0]) {
+          labDocuments.addressProofDocument = req.files.addressProofDocument[0].filename;
+        }
+        if (req.files.idProofDocument && req.files.idProofDocument[0]) {
+          labDocuments.idProofDocument = req.files.idProofDocument[0].filename;
+        }
+      }
+
+      console.log('Creating lab profile with documents:', labDocuments);
+      console.log('Lab data:', { labName, licenseNumber, parsedAddress, parsedOperatingHours });
 
       await Laboratory.create({
-
         userId: user._id,
-
-        licenseNumber: 'PENDING-' + Date.now(), // Temporary placeholder
-
-        labName: 'Not specified',
-
-        address: 'Not specified',
-
+        licenseNumber: licenseNumber || 'PENDING-' + Date.now(),
+        labName: labName || 'Not specified',
+        address: parsedAddress || {},
+        phone: phone || '',
+        email: email || '',
+        operatingHours: parsedOperatingHours || {},
+        documents: labDocuments,
       });
 
     } else if (role === 'pharmacy') {
+      // Build documents object from uploaded files for pharmacy
+      const pharmacyDocuments = {};
+      if (req.files) {
+        if (req.files.licenseDocument && req.files.licenseDocument[0]) {
+          pharmacyDocuments.licenseDocument = req.files.licenseDocument[0].filename;
+        }
+        if (req.files.registrationDocument && req.files.registrationDocument[0]) {
+          pharmacyDocuments.registrationDocument = req.files.registrationDocument[0].filename;
+        }
+        if (req.files.addressProofDocument && req.files.addressProofDocument[0]) {
+          pharmacyDocuments.addressProofDocument = req.files.addressProofDocument[0].filename;
+        }
+        if (req.files.idProofDocument && req.files.idProofDocument[0]) {
+          pharmacyDocuments.idProofDocument = req.files.idProofDocument[0].filename;
+        }
+      }
+
+      console.log('Creating pharmacy profile with documents:', pharmacyDocuments);
+      console.log('Pharmacy data:', { pharmacyName, licenseNumber, parsedAddress, parsedOperatingHours });
 
       await Pharmacy.create({
-
         userId: user._id,
-
-        licenseNumber: 'PENDING-' + Date.now(), // Temporary placeholder
-
-        pharmacyName: 'Not specified',
-
-        address: 'Not specified',
-
+        licenseNumber: licenseNumber || 'PENDING-' + Date.now(),
+        pharmacyName: pharmacyName || 'Not specified',
+        address: parsedAddress || {},
+        phone: phone || '',
+        email: email || '',
+        operatingHours: parsedOperatingHours || {},
+        documents: pharmacyDocuments,
       });
 
     }
@@ -122,25 +203,25 @@ export async function register(req, res) {
 
     res.status(201).json({
 
-      message: requiresApproval 
+      message: requiresApproval
 
-        ? 'Registration successful. Please wait for admin approval.' 
+        ? 'Registration successful. Please wait for admin approval.'
 
         : 'Registered successfully',
 
       token,
 
-      user: { 
+      user: {
 
-        id: user._id, 
+        id: user._id,
 
-        name: user.name, 
+        name: user.name,
 
-        email: user.email, 
+        email: user.email,
 
         role: user.role,
 
-        isVerified: user.isVerified 
+        isVerified: user.isVerified
 
       },
 
@@ -150,6 +231,7 @@ export async function register(req, res) {
 
   } catch (err) {
 
+    console.error('Registration error:', err);
     res.status(500).json({ message: 'Server error', error: err.message });
 
   }
