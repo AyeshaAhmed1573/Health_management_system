@@ -55,14 +55,51 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const register = async (userData, role) => {
+  const register = async (userData, role, files = null) => {
     try {
+      let body;
+      let headers = {};
+
+      // If files are present, use FormData
+      if (files) {
+        body = new FormData();
+        
+        // Add all user data fields
+        Object.keys(userData).forEach(key => {
+          if (userData[key] !== null && userData[key] !== undefined) {
+            if (typeof userData[key] === 'object') {
+              body.append(key, JSON.stringify(userData[key]));
+            } else {
+              body.append(key, userData[key]);
+            }
+          }
+        });
+        
+        // Add role
+        body.append('role', role);
+        
+        // Add files
+        if (files.medicalDegree) body.append('medicalDegreeDocument', files.medicalDegree);
+        if (files.licenseCertificate) body.append('licenseDocument', files.licenseCertificate);
+        if (files.hospitalProof) body.append('hospitalProofDocument', files.hospitalProof);
+        if (files.clinicProof) body.append('clinicProofDocument', files.clinicProof);
+        if (files.cnic) body.append('idProofDocument', files.cnic);
+        if (files.profilePhoto) body.append('profileImage', files.profilePhoto);
+        // Lab/Pharmacy files
+        if (files.licenseDocument) body.append('licenseDocument', files.licenseDocument);
+        if (files.registrationDocument) body.append('registrationDocument', files.registrationDocument);
+        if (files.addressProofDocument) body.append('addressProofDocument', files.addressProofDocument);
+        if (files.idProofDocument) body.append('idProofDocument', files.idProofDocument);
+      } else {
+        // No files, use JSON
+        headers['Content-Type'] = 'application/json';
+        body = JSON.stringify({ ...userData, role });
+      }
+
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ ...userData, role }),
+        headers,
+        body,
       });
 
       const data = await response.json();

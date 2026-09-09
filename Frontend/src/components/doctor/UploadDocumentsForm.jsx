@@ -8,6 +8,8 @@ import {
   UserCircle,
   ChevronLeft,
   CheckCircle2,
+  Building2,
+  Briefcase,
 } from 'lucide-react';
 
 export function UploadDocumentsForm({
@@ -122,8 +124,22 @@ export function UploadDocumentsForm({
         />
 
         <FileUploadField
+          id="hospitalProof"
+          label="Upload Hospital Affiliation Proof"
+          icon={Building2}
+          field="hospitalProof"
+        />
+
+        <FileUploadField
+          id="clinicProof"
+          label="Upload Clinic Affiliation Proof"
+          icon={Briefcase}
+          field="clinicProof"
+        />
+
+        <FileUploadField
           id="cnic"
-          label="Upload CNIC"
+          label="Upload CNIC/ID Proof"
           icon={CreditCard}
           field="cnic"
         />

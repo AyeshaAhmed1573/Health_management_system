@@ -78,6 +78,10 @@ export function DoctorRegistration() {
 
     licenseCertificate: null,
 
+    hospitalProof: null,
+
+    clinicProof: null,
+
     cnic: null,
 
     profilePhoto: null,
@@ -144,6 +148,16 @@ export function DoctorRegistration() {
 
 
 
+    // Prepare files object
+    const files = {
+      medicalDegree: formData.medicalDegree,
+      licenseCertificate: formData.licenseCertificate,
+      hospitalProof: formData.hospitalProof,
+      clinicProof: formData.clinicProof,
+      cnic: formData.cnic,
+      profilePhoto: formData.profilePhoto,
+    };
+
     const result = await register(
       {
         name: formData.fullName,
@@ -171,7 +185,8 @@ export function DoctorRegistration() {
           consultationFee: formData.clinicConsultationFee ? parseFloat(formData.clinicConsultationFee) : 0,
         } : null,
       },
-      'doctor'
+      'doctor',
+      files
     );
 
 
