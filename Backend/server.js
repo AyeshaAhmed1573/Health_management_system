@@ -29,9 +29,9 @@ app.use(cors({
   origin: process.env.FRONTEND_URL || ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5175'],
   credentials: true,
 }));
+app.use(cookieparser());
 app.use(json({ limit: '10mb' }));
 app.use(urlencoded({ extended: true, limit: '10mb' }));
-app.use(cookieparser());
 
 // Serve static files from public/uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
