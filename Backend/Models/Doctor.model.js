@@ -160,6 +160,25 @@ const doctorSchema = new mongoose.Schema(
 
     },
 
+    // Proof documents uploaded during signup
+    documents: {
+      licenseDocument: {
+        type: String,
+      },
+      medicalDegreeDocument: {
+        type: String,
+      },
+      hospitalProofDocument: {
+        type: String,
+      },
+      clinicProofDocument: {
+        type: String,
+      },
+      idProofDocument: {
+        type: String,
+      },
+    },
+
     availableSlots: [availableSlotSchema],
 
     verificationStatus: {
