@@ -152,7 +152,27 @@ export function PharmacyRegistrationForm() {
 
     setLoading(true);
 
+    // Prepare address object
+    const address = {
+      street: formData.pharmacyAddress,
+      city: formData.city,
+      province: formData.province,
+      postalCode: formData.postalCode,
+    };
 
+    // Prepare operating hours object
+    const operatingHours = {
+      open: formData.operatingHours?.split('-')[0]?.trim() || '',
+      close: formData.operatingHours?.split('-')[1]?.trim() || '',
+    };
+
+    // Prepare files object
+    const files = {
+      licenseDocument: formData.licenseCertificate,
+      registrationDocument: formData.governmentRegistration,
+      addressProofDocument: formData.taxRegistration,
+      idProofDocument: formData.pharmacistQualification,
+    };
 
     const result = await register(
 
@@ -166,9 +186,16 @@ export function PharmacyRegistrationForm() {
 
         phone: formData.contactPhone,
 
+        pharmacyName: formData.pharmacyName,
+        licenseNumber: formData.licenseNumber,
+        address: address,
+        operatingHours: operatingHours,
+
       },
 
-      'pharmacy'
+      'pharmacy',
+
+      files
 
     );
 

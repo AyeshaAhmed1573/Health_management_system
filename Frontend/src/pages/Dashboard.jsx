@@ -2116,6 +2116,78 @@ function AdminDashboard() {
 
               )}
 
+              {selectedEntity.address && (selectedEntity.address.street || selectedEntity.address.city) && (
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 4, display: 'block' }}>
+                    Address
+                  </label>
+                  <div style={{ background: C.bg, padding: 12, borderRadius: 8, fontSize: 13 }}>
+                    {selectedEntity.address.street && (
+                      <p style={{ margin: '0 0 4px', color: C.text }}>
+                        Street: {selectedEntity.address.street}
+                      </p>
+                    )}
+                    {selectedEntity.address.city && (
+                      <p style={{ margin: '0 0 4px', color: C.text }}>
+                        City: {selectedEntity.address.city}
+                      </p>
+                    )}
+                    {selectedEntity.address.province && (
+                      <p style={{ margin: '0 0 4px', color: C.text }}>
+                        Province: {selectedEntity.address.province}
+                      </p>
+                    )}
+                    {selectedEntity.address.postalCode && (
+                      <p style={{ margin: 0, color: C.text }}>
+                        Postal Code: {selectedEntity.address.postalCode}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {selectedEntity.phone && (
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 4, display: 'block' }}>
+                    Phone
+                  </label>
+                  <p style={{ margin: 0, fontSize: 14, color: C.text, fontWeight: 600 }}>
+                    {selectedEntity.phone}
+                  </p>
+                </div>
+              )}
+
+              {selectedEntity.email && (
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 4, display: 'block' }}>
+                    Email
+                  </label>
+                  <p style={{ margin: 0, fontSize: 14, color: C.text, fontWeight: 600 }}>
+                    {selectedEntity.email}
+                  </p>
+                </div>
+              )}
+
+              {selectedEntity.operatingHours && (selectedEntity.operatingHours.open || selectedEntity.operatingHours.close) && (
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 4, display: 'block' }}>
+                    Operating Hours
+                  </label>
+                  <div style={{ background: C.bg, padding: 12, borderRadius: 8, fontSize: 13 }}>
+                    {selectedEntity.operatingHours.open && (
+                      <p style={{ margin: '0 0 4px', color: C.text }}>
+                        Opens: {selectedEntity.operatingHours.open}
+                      </p>
+                    )}
+                    {selectedEntity.operatingHours.close && (
+                      <p style={{ margin: 0, color: C.text }}>
+                        Closes: {selectedEntity.operatingHours.close}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
 
 
               {selectedEntity.pharmacyName && (
@@ -2140,68 +2212,248 @@ function AdminDashboard() {
 
 
 
-              {selectedEntity.documents && selectedEntity.documents.length > 0 && (
-
+              {selectedEntity.hospital && (selectedEntity.hospital.name || selectedEntity.hospital.address) && (
                 <div>
-
                   <label style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 4, display: 'block' }}>
-
-                    Documents
-
+                    Hospital Details
                   </label>
-
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-
-                    {selectedEntity.documents.map((doc, index) => (
-
-                      <a
-
-                        key={index}
-
-                        href={doc}
-
-                        target="_blank"
-
-                        rel="noopener noreferrer"
-
-                        style={{
-
-                          padding: '6px 12px',
-
-                          borderRadius: 6,
-
-                          background: C.primary + '15',
-
-                          color: C.primary,
-
-                          fontSize: 12,
-
-                          fontWeight: 600,
-
-                          textDecoration: 'none',
-
-                          display: 'flex',
-
-                          alignItems: 'center',
-
-                          gap: 4,
-
-                        }}
-
-                      >
-
-                        <Eye size={12} />
-
-                        Document {index + 1}
-
-                      </a>
-
-                    ))}
-
+                  <div style={{ background: C.bg, padding: 12, borderRadius: 8, fontSize: 13 }}>
+                    {selectedEntity.hospital.name && (
+                      <p style={{ margin: '0 0 4px', color: C.text, fontWeight: 600 }}>
+                        Name: {selectedEntity.hospital.name}
+                      </p>
+                    )}
+                    {selectedEntity.hospital.address && (
+                      <p style={{ margin: '0 0 4px', color: C.text }}>
+                        Address: {selectedEntity.hospital.address}
+                      </p>
+                    )}
+                    {selectedEntity.hospital.city && (
+                      <p style={{ margin: '0 0 4px', color: C.text }}>
+                        City: {selectedEntity.hospital.city}
+                      </p>
+                    )}
+                    {selectedEntity.hospital.phone && (
+                      <p style={{ margin: '0 0 4px', color: C.text }}>
+                        Phone: {selectedEntity.hospital.phone}
+                      </p>
+                    )}
+                    {selectedEntity.hospital.workingHours && (
+                      <p style={{ margin: '0 0 4px', color: C.text }}>
+                        Working Hours: {selectedEntity.hospital.workingHours}
+                      </p>
+                    )}
+                    {selectedEntity.hospital.consultationFee && (
+                      <p style={{ margin: 0, color: C.text, fontWeight: 600 }}>
+                        Consultation Fee: ${selectedEntity.hospital.consultationFee}
+                      </p>
+                    )}
                   </div>
-
                 </div>
+              )}
 
+              {selectedEntity.clinic && (selectedEntity.clinic.name || selectedEntity.clinic.address) && (
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 4, display: 'block' }}>
+                    Clinic Details
+                  </label>
+                  <div style={{ background: C.bg, padding: 12, borderRadius: 8, fontSize: 13 }}>
+                    {selectedEntity.clinic.name && (
+                      <p style={{ margin: '0 0 4px', color: C.text, fontWeight: 600 }}>
+                        Name: {selectedEntity.clinic.name}
+                      </p>
+                    )}
+                    {selectedEntity.clinic.address && (
+                      <p style={{ margin: '0 0 4px', color: C.text }}>
+                        Address: {selectedEntity.clinic.address}
+                      </p>
+                    )}
+                    {selectedEntity.clinic.city && (
+                      <p style={{ margin: '0 0 4px', color: C.text }}>
+                        City: {selectedEntity.clinic.city}
+                      </p>
+                    )}
+                    {selectedEntity.clinic.phone && (
+                      <p style={{ margin: '0 0 4px', color: C.text }}>
+                        Phone: {selectedEntity.clinic.phone}
+                      </p>
+                    )}
+                    {selectedEntity.clinic.workingHours && (
+                      <p style={{ margin: '0 0 4px', color: C.text }}>
+                        Working Hours: {selectedEntity.clinic.workingHours}
+                      </p>
+                    )}
+                    {selectedEntity.clinic.consultationFee && (
+                      <p style={{ margin: 0, color: C.text, fontWeight: 600 }}>
+                        Consultation Fee: ${selectedEntity.clinic.consultationFee}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {selectedEntity.documents && typeof selectedEntity.documents === 'object' && (
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: C.muted, marginBottom: 4, display: 'block' }}>
+                    Uploaded Documents
+                  </label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {selectedEntity.documents.licenseDocument && (
+                      <a
+                        href={selectedEntity.documents.licenseDocument}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          padding: '8px 12px',
+                          borderRadius: 6,
+                          background: C.primary + '15',
+                          color: C.primary,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          textDecoration: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        <Eye size={14} />
+                        License Certificate
+                      </a>
+                    )}
+                    {selectedEntity.documents.medicalDegreeDocument && (
+                      <a
+                        href={selectedEntity.documents.medicalDegreeDocument}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          padding: '8px 12px',
+                          borderRadius: 6,
+                          background: C.primary + '15',
+                          color: C.primary,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          textDecoration: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        <Eye size={14} />
+                        Medical Degree
+                      </a>
+                    )}
+                    {selectedEntity.documents.hospitalProofDocument && (
+                      <a
+                        href={selectedEntity.documents.hospitalProofDocument}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          padding: '8px 12px',
+                          borderRadius: 6,
+                          background: C.primary + '15',
+                          color: C.primary,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          textDecoration: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        <Eye size={14} />
+                        Hospital Affiliation Proof
+                      </a>
+                    )}
+                    {selectedEntity.documents.clinicProofDocument && (
+                      <a
+                        href={selectedEntity.documents.clinicProofDocument}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          padding: '8px 12px',
+                          borderRadius: 6,
+                          background: C.primary + '15',
+                          color: C.primary,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          textDecoration: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        <Eye size={14} />
+                        Clinic Affiliation Proof
+                      </a>
+                    )}
+                    {selectedEntity.documents.registrationDocument && (
+                      <a
+                        href={selectedEntity.documents.registrationDocument}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          padding: '8px 12px',
+                          borderRadius: 6,
+                          background: C.primary + '15',
+                          color: C.primary,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          textDecoration: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        <Eye size={14} />
+                        Registration Document
+                      </a>
+                    )}
+                    {selectedEntity.documents.addressProofDocument && (
+                      <a
+                        href={selectedEntity.documents.addressProofDocument}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          padding: '8px 12px',
+                          borderRadius: 6,
+                          background: C.primary + '15',
+                          color: C.primary,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          textDecoration: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        <Eye size={14} />
+                        Address Proof Document
+                      </a>
+                    )}
+                    {selectedEntity.documents.idProofDocument && (
+                      <a
+                        href={selectedEntity.documents.idProofDocument}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          padding: '8px 12px',
+                          borderRadius: 6,
+                          background: C.primary + '15',
+                          color: C.primary,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          textDecoration: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        <Eye size={14} />
+                        ID Proof / CNIC
+                      </a>
+                    )}
+                  </div>
+                </div>
               )}
 
             </div>

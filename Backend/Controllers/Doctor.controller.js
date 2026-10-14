@@ -176,18 +176,45 @@ export async function updateDoctorProfile(req, res) {
       consultationFee,
       bio,
       profileImageUrl,
+      hospital,
+      clinic,
     } = req.body;
+
+    // Build update object
+    const updateData = {};
+    if (specialization !== undefined) updateData.specialization = specialization;
+    if (qualification !== undefined) updateData.qualification = qualification;
+    if (experienceYears !== undefined) updateData.experienceYears = experienceYears;
+    if (consultationFee !== undefined) updateData.consultationFee = consultationFee;
+    if (bio !== undefined) updateData.bio = bio;
+    if (profileImageUrl !== undefined) updateData.profileImageUrl = profileImageUrl;
+    if (hospital !== undefined) updateData.hospital = hospital;
+    if (clinic !== undefined) updateData.clinic = clinic;
+
+    // Handle document file uploads
+    if (req.files) {
+      const documents = {};
+      if (req.files.licenseDocument && req.files.licenseDocument[0]) {
+        documents.licenseDocument = req.files.licenseDocument[0].filename;
+      }
+      if (req.files.medicalDegreeDocument && req.files.medicalDegreeDocument[0]) {
+        documents.medicalDegreeDocument = req.files.medicalDegreeDocument[0].filename;
+      }
+      if (req.files.hospitalProofDocument && req.files.hospitalProofDocument[0]) {
+        documents.hospitalProofDocument = req.files.hospitalProofDocument[0].filename;
+      }
+      if (req.files.clinicProofDocument && req.files.clinicProofDocument[0]) {
+        documents.clinicProofDocument = req.files.clinicProofDocument[0].filename;
+      }
+      if (req.files.idProofDocument && req.files.idProofDocument[0]) {
+        documents.idProofDocument = req.files.idProofDocument[0].filename;
+      }
+      updateData.documents = documents;
+    }
 
     const doctor = await Doctor.findByIdAndUpdate(
       req.params.id,
-      {
-        specialization,
-        qualification,
-        experienceYears,
-        consultationFee,
-        bio,
-        profileImageUrl,
-      },
+      updateData,
       { new: true, runValidators: true }
     ).populate('userId', 'name email phone');
 

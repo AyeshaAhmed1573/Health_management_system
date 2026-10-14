@@ -106,17 +106,15 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const register = async (userData, role) => {
+  const register = async (userData, role, files = null) => {
     try {
       // Clear any existing session data before new registration
       clearAllRoleData();
 
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ ...userData, role }),
+        headers,
+        body,
       });
 
       const data = await response.json();

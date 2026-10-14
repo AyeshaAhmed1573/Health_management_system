@@ -246,12 +246,31 @@ export function LabRegistrationForm() {
 
     setLoading(true);
 
+    // Prepare address object
+    const address = {
+      street: formData.labAddress,
+      city: formData.city,
+      province: formData.provinceState,
+      postalCode: formData.postalCode,
+    };
 
+    // Prepare operating hours object
+    const operatingHours = {
+      open: formData.operatingHours?.split('-')[0]?.trim() || '',
+      close: formData.operatingHours?.split('-')[1]?.trim() || '',
+    };
+
+    // Prepare files object
+    const files = {
+      licenseDocument: formData.labLicense,
+      registrationDocument: formData.governmentReg,
+      addressProofDocument: formData.taxReg,
+      idProofDocument: formData.accreditation,
+    };
 
     const result = await register(
 
       {
-
         name: formData.labName,
 
         email: formData.contactEmail,
@@ -260,9 +279,16 @@ export function LabRegistrationForm() {
 
         phone: formData.contactPhone,
 
+        labName: formData.labName,
+        licenseNumber: formData.labRegistrationNumber,
+        address: address,
+        operatingHours: operatingHours,
+
       },
 
-      'lab'
+      'lab',
+
+      files
 
     );
 

@@ -49,6 +49,21 @@ const pharmacySchema = new mongoose.Schema(
       average: { type: Number, default: 0, min: 0, max: 5 },
       count: { type: Number, default: 0 },
     },
+    // Proof documents uploaded during signup
+    documents: {
+      licenseDocument: {
+        type: String,
+      },
+      registrationDocument: {
+        type: String,
+      },
+      addressProofDocument: {
+        type: String,
+      },
+      idProofDocument: {
+        type: String,
+      },
+    },
   },
   { timestamps: true }
 );

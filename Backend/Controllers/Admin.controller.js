@@ -68,10 +68,51 @@ export async function getAllPendingApprovals(req, res) {
       .populate('userId', 'name email phone role')
       .sort({ createdAt: -1 });
 
+    // Add full URLs for documents
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const doctorsWithUrls = pendingDoctors.map(doctor => {
+      const doctorObj = doctor.toObject();
+      if (doctorObj.documents) {
+        Object.keys(doctorObj.documents).forEach(key => {
+          if (doctorObj.documents[key]) {
+            doctorObj.documents[key] = `${baseUrl}/uploads/doctor-documents/${doctorObj.documents[key]}`;
+          }
+        });
+      }
+      if (doctorObj.profileImageUrl) {
+        doctorObj.profileImageUrl = `${baseUrl}/uploads/doctor-documents/${doctorObj.profileImageUrl}`;
+      }
+      return doctorObj;
+    });
+
+    const labsWithUrls = pendingLaboratories.map(lab => {
+      const labObj = lab.toObject();
+      if (labObj.documents) {
+        Object.keys(labObj.documents).forEach(key => {
+          if (labObj.documents[key]) {
+            labObj.documents[key] = `${baseUrl}/uploads/doctor-documents/${labObj.documents[key]}`;
+          }
+        });
+      }
+      return labObj;
+    });
+
+    const pharmaciesWithUrls = pendingPharmacies.map(pharmacy => {
+      const pharmacyObj = pharmacy.toObject();
+      if (pharmacyObj.documents) {
+        Object.keys(pharmacyObj.documents).forEach(key => {
+          if (pharmacyObj.documents[key]) {
+            pharmacyObj.documents[key] = `${baseUrl}/uploads/doctor-documents/${pharmacyObj.documents[key]}`;
+          }
+        });
+      }
+      return pharmacyObj;
+    });
+
     res.status(200).json({
-      pendingDoctors,
-      pendingLaboratories,
-      pendingPharmacies,
+      pendingDoctors: doctorsWithUrls,
+      pendingLaboratories: labsWithUrls,
+      pendingPharmacies: pharmaciesWithUrls,
       totalPending: pendingDoctors.length + pendingLaboratories.length + pendingPharmacies.length
     });
   } catch (err) {
@@ -94,10 +135,51 @@ export async function getAllApprovedEntities(req, res) {
       .populate('userId', 'name email phone role')
       .sort({ createdAt: -1 });
 
+    // Add full URLs for documents
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const doctorsWithUrls = approvedDoctors.map(doctor => {
+      const doctorObj = doctor.toObject();
+      if (doctorObj.documents) {
+        Object.keys(doctorObj.documents).forEach(key => {
+          if (doctorObj.documents[key]) {
+            doctorObj.documents[key] = `${baseUrl}/uploads/doctor-documents/${doctorObj.documents[key]}`;
+          }
+        });
+      }
+      if (doctorObj.profileImageUrl) {
+        doctorObj.profileImageUrl = `${baseUrl}/uploads/doctor-documents/${doctorObj.profileImageUrl}`;
+      }
+      return doctorObj;
+    });
+
+    const labsWithUrls = approvedLaboratories.map(lab => {
+      const labObj = lab.toObject();
+      if (labObj.documents) {
+        Object.keys(labObj.documents).forEach(key => {
+          if (labObj.documents[key]) {
+            labObj.documents[key] = `${baseUrl}/uploads/doctor-documents/${labObj.documents[key]}`;
+          }
+        });
+      }
+      return labObj;
+    });
+
+    const pharmaciesWithUrls = approvedPharmacies.map(pharmacy => {
+      const pharmacyObj = pharmacy.toObject();
+      if (pharmacyObj.documents) {
+        Object.keys(pharmacyObj.documents).forEach(key => {
+          if (pharmacyObj.documents[key]) {
+            pharmacyObj.documents[key] = `${baseUrl}/uploads/doctor-documents/${pharmacyObj.documents[key]}`;
+          }
+        });
+      }
+      return pharmacyObj;
+    });
+
     res.status(200).json({
-      approvedDoctors,
-      approvedLaboratories,
-      approvedPharmacies,
+      approvedDoctors: doctorsWithUrls,
+      approvedLaboratories: labsWithUrls,
+      approvedPharmacies: pharmaciesWithUrls,
       totalApproved: approvedDoctors.length + approvedLaboratories.length + approvedPharmacies.length
     });
   } catch (err) {
@@ -120,10 +202,51 @@ export async function getAllRejectedEntities(req, res) {
       .populate('userId', 'name email phone role')
       .sort({ createdAt: -1 });
 
+    // Add full URLs for documents
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const doctorsWithUrls = rejectedDoctors.map(doctor => {
+      const doctorObj = doctor.toObject();
+      if (doctorObj.documents) {
+        Object.keys(doctorObj.documents).forEach(key => {
+          if (doctorObj.documents[key]) {
+            doctorObj.documents[key] = `${baseUrl}/uploads/doctor-documents/${doctorObj.documents[key]}`;
+          }
+        });
+      }
+      if (doctorObj.profileImageUrl) {
+        doctorObj.profileImageUrl = `${baseUrl}/uploads/doctor-documents/${doctorObj.profileImageUrl}`;
+      }
+      return doctorObj;
+    });
+
+    const labsWithUrls = rejectedLaboratories.map(lab => {
+      const labObj = lab.toObject();
+      if (labObj.documents) {
+        Object.keys(labObj.documents).forEach(key => {
+          if (labObj.documents[key]) {
+            labObj.documents[key] = `${baseUrl}/uploads/doctor-documents/${labObj.documents[key]}`;
+          }
+        });
+      }
+      return labObj;
+    });
+
+    const pharmaciesWithUrls = rejectedPharmacies.map(pharmacy => {
+      const pharmacyObj = pharmacy.toObject();
+      if (pharmacyObj.documents) {
+        Object.keys(pharmacyObj.documents).forEach(key => {
+          if (pharmacyObj.documents[key]) {
+            pharmacyObj.documents[key] = `${baseUrl}/uploads/doctor-documents/${pharmacyObj.documents[key]}`;
+          }
+        });
+      }
+      return pharmacyObj;
+    });
+
     res.status(200).json({
-      rejectedDoctors,
-      rejectedLaboratories,
-      rejectedPharmacies,
+      rejectedDoctors: doctorsWithUrls,
+      rejectedLaboratories: labsWithUrls,
+      rejectedPharmacies: pharmaciesWithUrls,
       totalRejected: rejectedDoctors.length + rejectedLaboratories.length + rejectedPharmacies.length
     });
   } catch (err) {
