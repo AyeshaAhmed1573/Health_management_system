@@ -22,7 +22,6 @@ router.get('/specialization/:specialization', getDoctorsBySpecialization);
 router.get('/:id', getDoctorById);
 router.get('/user/:userId', getDoctorByUserId);
 
-<<<<<<< HEAD
 // Doctor registration with documents (public for signup)
 router.post('/register', upload.fields([
   { name: 'profilePhoto', maxCount: 1 },
@@ -37,20 +36,6 @@ router.put('/:id', protect, checkVerificationStatus, updateDoctorProfile);
 router.put('/:id/slots', protect, checkVerificationStatus, updateAvailableSlots);
 router.put('/:id/rating', protect, checkVerificationStatus, updateDoctorRating);
 router.delete('/:id', protect, checkVerificationStatus, deleteDoctor);
-=======
-// Protected routes (require authentication)
-router.post('/', protect, createDoctorProfile);
-router.put('/:id', protect, uploadDoctorDocuments.fields([
-  { name: 'licenseDocument', maxCount: 1 },
-  { name: 'medicalDegreeDocument', maxCount: 1 },
-  { name: 'hospitalProofDocument', maxCount: 1 },
-  { name: 'clinicProofDocument', maxCount: 1 },
-  { name: 'idProofDocument', maxCount: 1 },
-]), updateDoctorProfile);
-router.put('/:id/slots', protect, updateAvailableSlots);
-router.put('/:id/rating', protect, updateDoctorRating);
-router.delete('/:id', protect, deleteDoctor);
->>>>>>> 9aa74588449473ad52c229defd8fb4c524978730
 
 // Admin routes (require admin role)
 router.put('/:id/verify', protect, restrictTo('admin'), verifyDoctor);
