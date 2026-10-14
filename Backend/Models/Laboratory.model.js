@@ -35,6 +35,11 @@ const laboratorySchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
+    vendorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Vendor',
+      index: true,
+    },
     labName: {
       type: String,
       required: true,

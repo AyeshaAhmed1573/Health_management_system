@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const orderItemSchema = new mongoose.Schema(
   {
@@ -65,4 +65,4 @@ const medicineOrderSchema = new mongoose.Schema(
 medicineOrderSchema.index({ userId: 1, orderStatus: 1 });
 medicineOrderSchema.index({ pharmacyId: 1, orderStatus: 1 });
 
-module.exports = mongoose.model('MedicineOrder', medicineOrderSchema);
+export default mongoose.model('MedicineOrder', medicineOrderSchema);

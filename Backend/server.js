@@ -22,6 +22,14 @@ import otpRoutes from './Routes/otp.routes.js';
 import healthReadingRoutes from './Routes/HealthReading.routes.js';
 import notificationRoutes from './Routes/Notification.routes.js';
 import chatRoutes from './Routes/Chat.routes.js';
+import vendorRoutes from './Routes/Vendor.routes.js';
+import vendorStaffRoutes from './Routes/VendorStaff.routes.js';
+import productRoutes from './Routes/Product.routes.js';
+import pharmacyOrderRoutes from './Routes/PharmacyOrder.routes.js';
+import dashboardRoutes from './Routes/Dashboard.routes.js';
+import labTestRoutes from './Routes/LabTest.routes.js';
+import labBookingRoutes from './Routes/LabBooking.routes.js';
+import patientMarketplaceRoutes from './Routes/PatientMarketplace.routes.js';
 
 const app = express();
 
@@ -53,5 +61,13 @@ app.use('/api/otp', otpRoutes);
 app.use('/api/health-readings', healthReadingRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/vendors', vendorRoutes);
+app.use('/api/vendor-staff', vendorStaffRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/pharmacy-orders', pharmacyOrderRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/lab-tests', labTestRoutes);
+app.use('/api/lab-bookings', labBookingRoutes);
+app.use('/api/marketplace', patientMarketplaceRoutes);
 
 export default app;

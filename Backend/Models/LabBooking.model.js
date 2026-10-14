@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const bookedTestSchema = new mongoose.Schema(
   {
@@ -27,6 +27,11 @@ const labBookingSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Laboratory',
       required: true,
+      index: true,
+    },
+    vendorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Vendor',
       index: true,
     },
     tests: {
@@ -70,5 +75,6 @@ const labBookingSchema = new mongoose.Schema(
 
 labBookingSchema.index({ labId: 1, scheduledAt: 1 });
 labBookingSchema.index({ userId: 1, status: 1 });
+labBookingSchema.index({ vendorId: 1, status: 1 });
 
-module.exports = mongoose.model('LabBooking', labBookingSchema);
+export default mongoose.model('LabBooking', labBookingSchema);

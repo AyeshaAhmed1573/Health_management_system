@@ -1,470 +1,237 @@
-import User from '../Models/User.model.js';  // ✅ default import
-<<<<<<< HEAD
+import User from '../Models/User.model.js';
 import Doctor from '../Models/Doctor.model.js';
 import Laboratory from '../Models/Laboratory.model.js';
 import Pharmacy from '../Models/Pharmacy.model.js';
-=======
-
-import Doctor from '../Models/Doctor.model.js';
-
-import Laboratory from '../Models/Laboratory.model.js';
-
-import Pharmacy from '../Models/Pharmacy.model.js';
-
->>>>>>> fbea8a83f6f05b7315d2cd1da37ba06c8eaf1f1e
 import bcrypt from 'bcryptjs';
-
 import jwt from 'jsonwebtoken';
 
-
-
-const generateToken = (user) => {
-
-  return jwt.sign(
-
-    { id: user._id, role: user.role },
-
-    process.env.JWT_SECRET,
-
-    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-
-  );
-
+// Roles that need admin approval -> their profile model.
+const PROFILE_MODELS = {
+  doctor: Doctor,
+  laboratory: Laboratory,
+  pharmacy: Pharmacy,
 };
 
+// Roles a person may self-register as ('admin' is deliberately excluded)
+const SELF_REGISTER_ROLES = ['patient', ...Object.keys(PROFILE_MODELS)];
 
+const generateToken = (user) =>
+  jwt.sign(
+    { id: user._id, role: user.role },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+  );
+
+const placeholderLicense = () => 'PENDING-' + Date.now();
+
+const buildProfile = (role, userId, b) => {
+  const base = { userId, licenseNumber: b.licenseNumber || placeholderLicense() };
+  if (role === 'doctor') {
+    return {
+      ...base,
+      specialization: b.specialization || 'Not specified',
+      qualification: b.qualification || 'Not specified',
+      experienceYears: b.experienceYears,
+      hospital: b.hospital,
+      clinic: b.clinic,
+    };
+  }
+  if (role === 'pharmacy') {
+    return {
+      ...base,
+      pharmacyName: b.pharmacyName || 'Not specified',
+      address: b.address || 'Not specified',
+    };
+  }
+  // lab / laboratory
+  return {
+    ...base,
+    labName: b.labName || 'Not specified',
+    address: b.address || 'Not specified',
+  };
+};
 
 // REGISTER
-
 export async function register(req, res) {
-
   try {
+    const { name, email, password, phone, role = 'patient' } = req.body;
 
-    const { name, email, password, phone, role, specialization, licenseNumber, qualification, experienceYears, labName, pharmacyName, address, hospital, clinic } = req.body;
-
-
+    if (!SELF_REGISTER_ROLES.includes(role))
+      return res.status(400).json({ message: 'Invalid role' });
 
     const existing = await User.findOne({ email });
-
     if (existing)
-
       return res.status(400).json({ message: 'Email already registered' });
 
-
-
     const passwordHash = await bcrypt.hash(password, 10);
-
-
-
-    // Roles that require admin approval
-
-    const rolesRequiringApproval = ['doctor', 'lab', 'pharmacy'];
-
-    const requiresApproval = rolesRequiringApproval.includes(role);
-
-    
+    const ProfileModel = PROFILE_MODELS[role];
+    const requiresApproval = Boolean(ProfileModel);
 
     const user = await User.create({
-
-      name, email, passwordHash, phone, role: role || 'patient',
-
-      isVerified: !requiresApproval, // Auto-verify patients, others need approval
-
+      name, email, passwordHash, phone, role,
+      isVerified: !requiresApproval,
     });
 
-
-
-    // Create profile record for roles requiring approval
-
-    if (role === 'doctor') {
-
-      await Doctor.create({
-
-        userId: user._id,
-
-        licenseNumber: 'PENDING-' + Date.now(), // Temporary placeholder
-
-        specialization: 'Not specified',
-
-        qualification: 'Not specified',
-
-      });
-
-    } else if (role === 'lab') {
-
-      await Laboratory.create({
-
-        userId: user._id,
-
-        licenseNumber: 'PENDING-' + Date.now(), // Temporary placeholder
-
-        labName: 'Not specified',
-
-        address: 'Not specified',
-
-      });
-
-    } else if (role === 'pharmacy') {
-
-      await Pharmacy.create({
-
-        userId: user._id,
-
-        licenseNumber: 'PENDING-' + Date.now(), // Temporary placeholder
-
-        pharmacyName: 'Not specified',
-
-        address: 'Not specified',
-
-      });
-
+    if (requiresApproval) {
+      try {
+        await ProfileModel.create({
+          ...buildProfile(role, user._id, req.body),
+          verificationStatus: 'pending',
+        });
+      } catch (profileErr) {
+        await User.findByIdAndDelete(user._id); // don't leave an orphan user
+        throw profileErr;
+      }
     }
 
+    const userData = {
+      id: user._id, name: user.name, email: user.email,
+      role: user.role, isVerified: user.isVerified,
+    };
 
-
-    const token = generateToken(user);
-
-
+    // Unapproved accounts get no token until an admin approves them
+    if (requiresApproval) {
+      return res.status(201).json({
+        message: 'Registration successful. Please wait for admin approval.',
+        user: userData,
+        requiresApproval: true,
+      });
+    }
 
     res.status(201).json({
-
-      message: requiresApproval 
-
-        ? 'Registration successful. Please wait for admin approval.' 
-
-        : 'Registered successfully',
-
-      token,
-
-      user: { 
-
-        id: user._id, 
-
-        name: user.name, 
-
-        email: user.email, 
-
-        role: user.role,
-
-        isVerified: user.isVerified 
-
-      },
-
-      requiresApproval,
-
+      message: 'Registered successfully',
+      token: generateToken(user),
+      user: userData,
+      requiresApproval: false,
     });
-
   } catch (err) {
-
     res.status(500).json({ message: 'Server error', error: err.message });
-
   }
-
 }
-
-
 
 // LOGIN
-
 export async function login(req, res) {
-
   try {
-
     const { email, password } = req.body;
 
-
-
     const user = await User.findOne({ email });
-
     if (!user)
-
       return res.status(400).json({ message: 'Invalid email or password' });
-
-
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);
-
     if (!isMatch)
-
       return res.status(400).json({ message: 'Invalid email or password' });
 
-<<<<<<< HEAD
-    // Check verification status for professional roles
-    if (user.role === 'doctor') {
-      const doctor = await Doctor.findOne({ userId: user._id });
-      if (doctor && doctor.verificationStatus === 'rejected') {
-        return res.status(403).json({ 
-          message: 'Your doctor registration has been rejected. Please contact support for assistance.' 
-        });
-      }
-      if (doctor && doctor.verificationStatus === 'pending') {
-        return res.status(403).json({ 
-          message: 'Your doctor registration is pending admin approval. Please wait for verification.' 
-        });
-      }
-    }
+    const ProfileModel = PROFILE_MODELS[user.role];
+    if (ProfileModel) {
+      const profile = await ProfileModel.findOne({ userId: user._id });
+      const label = user.role === 'doctor' ? 'doctor'
+        : user.role === 'pharmacy' ? 'pharmacy' : 'laboratory';
 
-    if (user.role === 'laboratory') {
-      const laboratory = await Laboratory.findOne({ userId: user._id });
-      if (laboratory && laboratory.verificationStatus === 'rejected') {
-        return res.status(403).json({ 
-          message: 'Your laboratory registration has been rejected. Please contact support for assistance.' 
+      if (profile?.verificationStatus === 'rejected') {
+        return res.status(403).json({
+          message: `Your ${label} registration has been rejected. Please contact support for assistance.`,
+          reason: profile.rejectionReason,
         });
       }
-      if (laboratory && laboratory.verificationStatus === 'pending') {
-        return res.status(403).json({ 
-          message: 'Your laboratory registration is pending admin approval. Please wait for verification.' 
+      if (profile?.verificationStatus === 'pending' || !user.isVerified) {
+        return res.status(403).json({
+          message: `Your ${label} registration is pending admin approval. Please wait for verification.`,
+          requiresApproval: true,
         });
       }
     }
-
-    if (user.role === 'pharmacy') {
-      const pharmacy = await Pharmacy.findOne({ userId: user._id });
-      if (pharmacy && pharmacy.verificationStatus === 'rejected') {
-        return res.status(403).json({ 
-          message: 'Your pharmacy registration has been rejected. Please contact support for assistance.' 
-        });
-      }
-      if (pharmacy && pharmacy.verificationStatus === 'pending') {
-        return res.status(403).json({ 
-          message: 'Your pharmacy registration is pending admin approval. Please wait for verification.' 
-        });
-      }
-    }
-=======
-
-
-    // Check if user is verified (for roles requiring approval)
-
-    if (!user.isVerified) {
-
-      return res.status(403).json({ 
-
-        message: 'Your account is pending admin approval. Please wait for approval.',
-
-        requiresApproval: true 
-
-      });
-
-    }
-
-
->>>>>>> fbea8a83f6f05b7315d2cd1da37ba06c8eaf1f1e
-
-    const token = generateToken(user);
-
-
 
     res.status(200).json({
-
       message: 'Login successful',
-
-      token,
-
-      user: { 
-
-        id: user._id, 
-
-        name: user.name, 
-
-        email: user.email, 
-
-        role: user.role,
-
-        isVerified: user.isVerified 
-
+      token: generateToken(user),
+      user: {
+        id: user._id, name: user.name, email: user.email,
+        role: user.role, isVerified: user.isVerified,
       },
-
     });
-
   } catch (err) {
-
     res.status(500).json({ message: 'Server error', error: err.message });
-
   }
-
 }
-
-
 
 // GET ME
-
 export async function getMe(req, res) {
-
   try {
-
     const user = await User.findById(req.user.id).select('-passwordHash');
-
     if (!user) return res.status(404).json({ message: 'User not found' });
-
     res.status(200).json({ user });
-
   } catch (err) {
-
     res.status(500).json({ message: 'Server error', error: err.message });
-
   }
-
 }
 
-
-
-// GET PENDING USERS (Admin only)
-
+// GET PENDING USERS (Admin only, enforced by requireAdmin middleware)
 export async function getPendingUsers(req, res) {
-
   try {
+    const profileLists = await Promise.all(
+      [Doctor, Laboratory, Pharmacy].map((M) =>
+        M.find({ verificationStatus: 'pending' }).select('userId')
+      )
+    );
+    const userIds = profileLists.flat().map((p) => p.userId);
 
-    // Check if user is admin
-
-    const currentUser = await User.findById(req.user.id);
-
-    if (currentUser.role !== 'admin') {
-
-      return res.status(403).json({ message: 'Admin access required' });
-
-    }
-
-
-
-    const pendingUsers = await User.find({ 
-
-      isVerified: false,
-
-      role: { $in: ['doctor', 'lab', 'pharmacy'] }
-
-    }).select('-passwordHash').sort({ createdAt: -1 });
-
-
+    const pendingUsers = await User.find({ _id: { $in: userIds } })
+      .select('-passwordHash')
+      .sort({ createdAt: -1 });
 
     res.status(200).json({ pendingUsers });
-
   } catch (err) {
-
     res.status(500).json({ message: 'Server error', error: err.message });
-
   }
-
 }
-
-
 
 // APPROVE USER (Admin only)
-
 export async function approveUser(req, res) {
-
   try {
+    const user = await User.findById(req.params.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const { userId } = req.params;
+    const ProfileModel = PROFILE_MODELS[user.role];
+    if (!ProfileModel)
+      return res.status(400).json({ message: 'This user does not require approval' });
 
-    
-
-    // Check if current user is admin
-
-    const currentUser = await User.findById(req.user.id);
-
-    if (currentUser.role !== 'admin') {
-
-      return res.status(403).json({ message: 'Admin access required' });
-
-    }
-
-
-
-    const user = await User.findById(userId);
-
-    if (!user) {
-
-      return res.status(404).json({ message: 'User not found' });
-
-    }
-
-
-
+    await ProfileModel.updateOne(
+      { userId: user._id },
+      { verificationStatus: 'approved', rejectionReason: undefined, verifiedAt: new Date() }
+    );
     user.isVerified = true;
-
     await user.save();
 
-
-
-    res.status(200).json({ 
-
+    res.status(200).json({
       message: 'User approved successfully',
-
-      user: { id: user._id, name: user.name, email: user.email, role: user.role, isVerified: user.isVerified }
-
+      user: { id: user._id, name: user.name, email: user.email, role: user.role, isVerified: user.isVerified },
     });
-
   } catch (err) {
-
     res.status(500).json({ message: 'Server error', error: err.message });
-
   }
-
 }
 
-
-
-// REJECT USER (Admin only)
-
+// REJECT USER (Admin only) - keeps the record so the user sees the reason on login
 export async function rejectUser(req, res) {
-
   try {
+    const { reason } = req.body;
+    const user = await User.findById(req.params.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const { userId } = req.params;
+    const ProfileModel = PROFILE_MODELS[user.role];
+    if (!ProfileModel)
+      return res.status(400).json({ message: 'This user does not require approval' });
 
-    
+    await ProfileModel.updateOne(
+      { userId: user._id },
+      { verificationStatus: 'rejected', rejectionReason: reason || 'Not specified' }
+    );
+    user.isVerified = false;
+    await user.save();
 
-    // Check if current user is admin
-
-    const currentUser = await User.findById(req.user.id);
-
-    if (currentUser.role !== 'admin') {
-
-      return res.status(403).json({ message: 'Admin access required' });
-
-    }
-
-
-
-    const user = await User.findById(userId);
-
-    if (!user) {
-
-      return res.status(404).json({ message: 'User not found' });
-
-    }
-
-
-
-    // Delete associated profile records
-
-    if (user.role === 'doctor') {
-
-      await Doctor.deleteOne({ userId });
-
-    } else if (user.role === 'lab') {
-
-      await Laboratory.deleteOne({ userId });
-
-    } else if (user.role === 'pharmacy') {
-
-      await Pharmacy.deleteOne({ userId });
-
-    }
-
-
-
-    await User.findByIdAndDelete(userId);
-
-
-
-    res.status(200).json({ message: 'User rejected and removed successfully' });
-
+    res.status(200).json({ message: 'User rejected' });
   } catch (err) {
-
     res.status(500).json({ message: 'Server error', error: err.message });
-
   }
-
 }

@@ -24,7 +24,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['patient', 'doctor', 'lab', 'pharmacy', 'admin'],
+      enum: ['patient', 'doctor', 'laboratory', 'pharmacy', 'admin', 'super_admin', 'vendor_owner', 'vendor_staff'],
       default: 'patient',
     },
     isVerified: {
@@ -47,8 +47,17 @@ const userSchema = new mongoose.Schema(
       type: Date,
       select: false,
     },
+    // New fields for vendor system
+    vendorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Vendor',
+      index: true,
+    },
   },
   { timestamps: true }
 );
 
-export default mongoose.model('User', userSchema);  // ✅ ES module export
+// Index for vendor staff lookups
+userSchema.index({ vendorId: 1, role: 1 });
+
+export default mongoose.model('User', userSchema);

@@ -14,6 +14,11 @@ const medicalReportSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    vendorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Vendor',
+      index: true,
+    },
     title: {
       type: String,
       required: true,

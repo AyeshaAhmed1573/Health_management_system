@@ -23,13 +23,7 @@ import {
   UserCog, ClipboardList, Beaker, Menu, X, HeartPulse, Syringe, ChevronRight,
 
   Settings, ShieldCheck, LogOut, UserPlus, Upload, Activity as ActivityIcon,
-<<<<<<< HEAD
-  Droplet, Scale, Eye, CheckCircle, XCircle, RefreshCw, Heart, Calculator,
-=======
-
   Droplet, Scale, Eye, CheckCircle, XCircle, RefreshCw,
-
->>>>>>> fbea8a83f6f05b7315d2cd1da37ba06c8eaf1f1e
 } from "lucide-react";
 
 import { useAuth } from "@/lib/authContext";
@@ -39,6 +33,8 @@ import { patientProfilesApi, healthReadingsApi, notificationsApi, reportsApi } f
 import QuickActionUploadReport from "@/components/reports/QuickActionUploadReport";
 
 import AddHealthReadingModal from "@/components/health/AddHealthReadingModal";
+
+import ProductManagement from "@/pages/ProductManagement";
 
 
 
@@ -879,29 +875,21 @@ function QuickActions({ actions }) {
   return (
 
     <Panel title="Quick actions">
-<<<<<<< HEAD
-      <div style={{ display: "flex", flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-=======
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
 
->>>>>>> fbea8a83f6f05b7315d2cd1da37ba06c8eaf1f1e
         {actions.map((a, i) => (
 
           <button
 
             key={i}
-<<<<<<< HEAD
+
             onClick={a.onClick}
-            style={{
-              display: "flex", alignItems: "center", gap: 8, padding: "10px 12px",
-=======
 
             style={{
 
               display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
 
->>>>>>> fbea8a83f6f05b7315d2cd1da37ba06c8eaf1f1e
               background: C.bg, border: `1px solid ${C.secondary}`, borderRadius: 10,
 
               fontFamily: font, fontSize: 13, fontWeight: 600, color: C.text, cursor: "pointer",
@@ -919,12 +907,9 @@ function QuickActions({ actions }) {
             <a.icon size={15} color={C.primaryDark} />
 
             {a.label}
-<<<<<<< HEAD
-=======
 
             <ChevronRight size={14} color={C.muted} style={{ marginLeft: "auto" }} />
 
->>>>>>> fbea8a83f6f05b7315d2cd1da37ba06c8eaf1f1e
           </button>
 
         ))}
@@ -3250,22 +3235,6 @@ function PatientDashboard({ currentUser }) {
 
 
       {/* Quick Actions */}
-<<<<<<< HEAD
-      <QuickActions
-        actions={[
-          { 
-            icon: Upload, 
-            label: "Upload Report",
-            onClick: () => setShowUploadModal(true)
-          },
-          { icon: CalendarCheck, label: "Book Appointment" },
-          { icon: FlaskConical, label: "Book Lab Test" },
-          { icon: Pill, label: "Order Medicines" },
-          { icon: ActivityIcon, label: "Add Reading", onClick: () => setShowAddReadingModal(true) },
-          { icon: UserPlus, label: "Add Family Member", onClick: () => setShowAddFamilyModal(true) },
-        ]}
-      />
-=======
 
       <div style={grid(6)} className="responsive-grid-6">
 
@@ -3298,7 +3267,6 @@ function PatientDashboard({ currentUser }) {
         />
 
       </div>
->>>>>>> fbea8a83f6f05b7315d2cd1da37ba06c8eaf1f1e
 
 
 
@@ -4579,152 +4547,175 @@ function LabDashboard() {
 
 
 function PharmacyDashboard() {
+  const [showProductManagement, setShowProductManagement] = useState(false);
 
   return (
 
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-      <div style={grid(3)} className="responsive-grid-6">
+      {showProductManagement ? (
+        <div style={{ background: C.card, borderRadius: 12, padding: 24 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: C.text }}>Product Management</h2>
+            <button
+              onClick={() => setShowProductManagement(false)}
+              style={{
+                padding: "8px 16px",
+                background: C.bg,
+                border: "none",
+                borderRadius: 8,
+                cursor: "pointer",
+                fontSize: 14,
+                fontWeight: 600,
+                color: C.text
+              }}
+            >
+              ← Back to Dashboard
+            </button>
+          </div>
+          <ProductManagement />
+        </div>
+      ) : (
+        <>
+          <div style={grid(3)} className="responsive-grid-6">
 
-        {pharmacy.metrics.map((m, i) => (
+            {pharmacy.metrics.map((m, i) => (
 
-          <MetricCard key={i} m={m} />
-
-        ))}
-
-      </div>
-
-      <div style={grid(2)} className="responsive-grid-2">
-
-        <Panel title="Prescription trends" subtitle="Weekly volume">
-
-          <BarC data={pharmacy.prescriptionTrend} xKey="w" yKey="v" />
-
-        </Panel>
-
-        <Panel title="Medication category distribution">
-
-          <PieC data={pharmacy.categoryDist} nameKey="n" valueKey="v" />
-
-        </Panel>
-
-        <Panel title="Inventory status" subtitle="% of target stock level">
-
-          <BarC data={pharmacy.inventoryStatus} xKey="n" yKey="v" horizontal color={C.accent} />
-
-        </Panel>
-
-        <Panel title="Revenue trend" subtitle="Monthly revenue, USD">
-
-          <LineC data={pharmacy.revenueTrend} xKey="m" yKey="v" color={C.primaryDark} />
-
-        </Panel>
-
-        <Panel title="Top prescribed drugs" subtitle="Units dispensed">
-
-          <BarC data={pharmacy.topDrugs} xKey="n" yKey="v" horizontal />
-
-        </Panel>
-
-        <Panel title="Low stock alerts">
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-
-            {pharmacy.alerts.map((a, i) => (
-
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-
-                <AlertTriangle size={15} color={C.down} />
-
-                <div>
-
-                  <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: C.text }}>{a.n}</p>
-
-                  <p style={{ margin: 0, fontSize: 11, color: C.muted }}>{a.left}</p>
-
-                </div>
-
-              </div>
+              <MetricCard key={i} m={m} />
 
             ))}
 
           </div>
 
-        </Panel>
+          <div style={grid(2)} className="responsive-grid-2">
 
-      </div>
+            <Panel title="Prescription trends" subtitle="Weekly volume">
 
-      <div style={grid(3)} className="responsive-grid-3">
+              <BarC data={pharmacy.prescriptionTrend} xKey="w" yKey="v" />
 
-        <Panel title="Expiry tracking">
+            </Panel>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <Panel title="Medication category distribution">
 
-            {[
+              <PieC data={pharmacy.categoryDist} nameKey="n" valueKey="v" />
 
-              { n: "Amoxicillin 500mg", d: "Expires in 12 days" },
+            </Panel>
 
-              { n: "Insulin glargine", d: "Expires in 20 days" },
+            <Panel title="Inventory status" subtitle="% of target stock level">
 
-              { n: "Ibuprofen 400mg", d: "Expires in 28 days" },
+              <BarC data={pharmacy.inventoryStatus} xKey="n" yKey="v" horizontal color={C.accent} />
 
-            ].map((e, i) => (
+            </Panel>
 
-              <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <Panel title="Revenue trend" subtitle="Monthly revenue, USD">
 
-                <span style={{ fontSize: 13, color: C.text }}>{e.n}</span>
+              <LineC data={pharmacy.revenueTrend} xKey="m" yKey="v" color={C.primaryDark} />
 
-                <span style={{ fontSize: 11.5, color: C.muted }}>{e.d}</span>
+            </Panel>
+
+            <Panel title="Top prescribed drugs" subtitle="Units dispensed">
+
+              <BarC data={pharmacy.topDrugs} xKey="n" yKey="v" horizontal />
+
+            </Panel>
+
+            <Panel title="Low stock alerts">
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+
+                {pharmacy.alerts.map((a, i) => (
+
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+
+                    <AlertTriangle size={15} color={C.down} />
+
+                    <div>
+
+                      <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: C.text }}>{a.n}</p>
+
+                      <p style={{ margin: 0, fontSize: 11, color: C.muted }}>{a.left}</p>
+
+                    </div>
+
+                  </div>
+
+                ))}
 
               </div>
 
-            ))}
+            </Panel>
 
           </div>
 
-        </Panel>
+          <QuickActions
+            actions={[
+              { icon: Package, label: "Manage Products", onClick: () => setShowProductManagement(true) },
+              { icon: FileText, label: "View Prescriptions" },
+              { icon: DollarSign, label: "Process Orders" },
+              { icon: Users, label: "Customer Reviews" },
+            ]}
+          />
 
-        <Panel title="Order management">
+          <div style={grid(3)} className="responsive-grid-3">
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <Panel title="Expiry tracking">
 
-            {[
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
 
-              { n: "PO-1042 — Cardiac line", s: "In transit" },
+                {[
 
-              { n: "PO-1043 — Antibiotics", s: "Pending approval" },
+                  { n: "Amoxicillin 500mg", d: "Expires in 12 days" },
 
-            ].map((o, i) => (
+                  { n: "Insulin glargine", d: "Expires in 20 days" },
 
-              <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  { n: "Ibuprofen 400mg", d: "Expires in 28 days" },
 
-                <span style={{ fontSize: 13, color: C.text }}>{o.n}</span>
+                ].map((e, i) => (
 
-                <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: C.secondary, color: C.primaryDark }}>{o.s}</span>
+                  <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+
+                    <span style={{ fontSize: 13, color: C.text }}>{e.n}</span>
+
+                    <span style={{ fontSize: 11.5, color: C.muted }}>{e.d}</span>
+
+                  </div>
+
+                ))}
 
               </div>
 
-            ))}
+            </Panel>
+
+            <Panel title="Order management">
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+
+                {[
+
+                  { n: "PO-1042 — Cardiac line", s: "In transit" },
+
+                  { n: "PO-1043 — Antibiotics", s: "Pending approval" },
+
+                ].map((o, i) => (
+
+                  <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+
+                    <span style={{ fontSize: 13, color: C.text }}>{o.n}</span>
+
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: C.secondary, color: C.primaryDark }}>{o.s}</span>
+
+                  </div>
+
+                ))}
+
+              </div>
+
+            </Panel>
 
           </div>
 
-        </Panel>
-
-        <QuickActions
-
-          actions={[
-
-            { icon: Pill, label: "Process prescription" },
-
-            { icon: Package, label: "Order stock" },
-
-            { icon: ClipboardList, label: "Update inventory" },
-
-          ]}
-
-        />
-
-      </div>
+        </>
+      )}
 
     </div>
 

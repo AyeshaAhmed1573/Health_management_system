@@ -66,11 +66,27 @@ import LaboratoryLogin from "@/pages/LaboratoryLogin";
 
 import PharmacyLogin from "@/pages/PharmacyLogin";
 
+import VendorSignup from "@/pages/VendorSignup";
+
+import VendorLogin from "@/pages/VendorLogin";
+
+import VendorDashboard from "@/pages/VendorDashboard";
+
+import ProductManagement from "@/pages/ProductManagement";
+
+import Marketplace from "@/pages/Marketplace";
+
+import Cart from "@/pages/Cart";
+
+import Checkout from "@/pages/Checkout";
+
+import MyOrders from "@/pages/MyOrders";
+
 import AdminSignup from "@/pages/AdminSignup";
 
-// import AdminDashboard from "@/pages/AdminDashboard";
-
 import Dashboard from "@/pages/Dashboard";
+
+import DashboardLogin from "@/pages/DashboardLogin";
 
 
 
@@ -130,6 +146,20 @@ function Router() {
 
         <Route path="/signup" component={Signup} />
 
+        {/* Vendor marketplace routes */}
+        <Route path="/vendor-signup" component={VendorSignup} />
+        <Route path="/vendor-login" component={VendorLogin} />
+        <Route path="/vendor/dashboard">
+          {() => user ? (user.role === 'vendor_owner' || user.role === 'vendor_staff' ? <VendorDashboard /> : <NotFound />) : <VendorLogin />}
+        </Route>
+        <Route path="/vendor/products">
+          {() => user ? (user.role === 'vendor_owner' || user.role === 'vendor_staff' ? <ProductManagement /> : <NotFound />) : <VendorLogin />}
+        </Route>
+        <Route path="/marketplace" component={Marketplace} />
+        <Route path="/cart" component={Cart} />
+        <Route path="/checkout" component={Checkout} />
+        <Route path="/my-orders" component={MyOrders} />
+
         {/* Role-specific signup routes */}
 
         <Route path="/admin-signup" component={AdminSignup} />
@@ -145,23 +175,6 @@ function Router() {
         <Route path="/lab-login" component={LaboratoryLogin} />
 
         <Route path="/pharmacy-login" component={PharmacyLogin} />
-<<<<<<< HEAD
-        {/* Dashboard routes with role-based access control */}
-        <Route path="/admin/dashboard">
-          {() => user?.role === 'admin' ? <Dashboard currentUser={user} /> : <NotFound />}
-        </Route>
-        <Route path="/patient/dashboard">
-          {() => user?.role === 'patient' ? <Dashboard currentUser={user} /> : <NotFound />}
-        </Route>
-        <Route path="/doctor/dashboard">
-          {() => user?.role === 'doctor' ? <Dashboard currentUser={user} /> : <NotFound />}
-        </Route>
-        <Route path="/lab/dashboard">
-          {() => user?.role === 'laboratory' ? <Dashboard currentUser={user} /> : <NotFound />}
-        </Route>
-        <Route path="/pharmacy/dashboard">
-          {() => user?.role === 'pharmacy' ? <Dashboard currentUser={user} /> : <NotFound />}
-=======
 
         {/* Dashboard routes - protected, redirect to login if not authenticated, and check role */}
         <Route path="/admin/dashboard">
@@ -178,7 +191,6 @@ function Router() {
         </Route>
         <Route path="/pharmacy/dashboard">
           {() => user ? (user.role === 'pharmacy' ? <Dashboard currentUser={user} /> : <NotFound />) : <DashboardLogin />}
->>>>>>> fbea8a83f6f05b7315d2cd1da37ba06c8eaf1f1e
         </Route>
 
         <Route component={NotFound} />

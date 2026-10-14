@@ -8,6 +8,11 @@ const pharmacySchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
+    vendorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Vendor',
+      index: true,
+    },
     pharmacyName: {
       type: String,
       required: true,
