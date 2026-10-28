@@ -1,0 +1,7 @@
+.env
+node_modules
+# Patient reports, prescriptions and ID documents must never be committed
+public/uploads/*
+!public/uploads/.gitkeep
+uploads/*
+!uploads/.gitkeep
