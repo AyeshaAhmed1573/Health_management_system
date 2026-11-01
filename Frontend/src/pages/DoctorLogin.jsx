@@ -197,6 +197,10 @@ export default function DoctorLogin() {
             Create a doctor account →
           </a>
           <br />
+          <a href="/forgot-password" style={{ color: C.primary, textDecoration: 'none', fontWeight: 600 }}>
+            Forgot your password?
+          </a>
+          <br />
           <a href="/" style={{ color: C.muted, textDecoration: 'none', fontWeight: 600 }}>
             ← Back to Home
           </a>

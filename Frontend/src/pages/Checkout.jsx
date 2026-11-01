@@ -18,7 +18,7 @@ export default function Checkout() {
   const { data: cartData } = useQuery({
     queryKey: ['cart'],
     queryFn: async () => {
-      const response = await fetch('http://localhost:5000/api/marketplace/cart', {
+      const response = await fetch('http://localhost:3000/api/marketplace/cart', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -31,7 +31,7 @@ export default function Checkout() {
   const { data: profilesData } = useQuery({
     queryKey: ['patient-profiles'],
     queryFn: async () => {
-      const response = await fetch('http://localhost:5000/api/profiles', {
+      const response = await fetch('http://localhost:3000/api/profiles', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -55,7 +55,7 @@ export default function Checkout() {
 
   const checkoutMutation = useMutation({
     mutationFn: async (checkoutData) => {
-      const response = await fetch('http://localhost:5000/api/marketplace/checkout', {
+      const response = await fetch('http://localhost:3000/api/marketplace/checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

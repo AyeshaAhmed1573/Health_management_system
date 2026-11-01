@@ -1,3 +1,4 @@
+import { openProtectedFile } from '@/lib/session';
 import React, { useState, useEffect } from 'react';
 import { useLocation, useParams } from 'wouter';
 import {
@@ -86,18 +87,15 @@ export default function ReportFolderView() {
     loadReports();
   };
 
-  const handleViewFile = (fileUrl) => {
-    // Handle both /uploads/ and /api/uploads/ paths
-    let cleanUrl = fileUrl;
-    if (fileUrl.startsWith('/api/uploads/')) {
-      cleanUrl = fileUrl.replace('/api', '');
+  // Local report files are no longer public static files - they are fetched with the login token.
+  const handleViewFile = (report) => {
+    const fileUrl = report.fileUrl;
+    if (!fileUrl) return;
+    if (/^(https?:|data:)/i.test(fileUrl)) {
+      window.open(fileUrl, '_blank');
+      return;
     }
-    
-    // If it's a local path, use the backend base URL without /api
-    const fullUrl = cleanUrl.startsWith('/uploads/') 
-      ? `http://localhost:5000${cleanUrl}`
-      : fileUrl;
-    window.open(fullUrl, '_blank');
+    openProtectedFile(`/api/reports/${report._id || report.id}/file`).catch((err) => alert(err.message));
   };
 
   const handleCompare = () => {
@@ -357,7 +355,7 @@ export default function ReportFolderView() {
               {/* Actions */}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button
-                  onClick={() => handleViewFile(report.fileUrl)}
+                  onClick={() => handleViewFile(report)}
                   style={{
                     display: 'flex',
                     alignItems: 'center',

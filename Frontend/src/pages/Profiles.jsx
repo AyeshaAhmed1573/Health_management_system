@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -37,9 +38,12 @@ export default function Profiles() {
     defaultValues: {
       name: "",
       relationship: "self",
-      userId: user?.id || "temp-id",
+      userId: user?.id || undefined,
+      consentConfirmed: false,
     },
   });
+
+  const relationship = form.watch("relationship");
 
   const onSubmit = (values) => {
     createMutation.mutate(values, {
@@ -116,6 +120,27 @@ export default function Profiles() {
                       </FormItem>
                     )}
                   />
+
+                  {relationship !== "self" && (
+                    <FormField
+                      control={form.control}
+                      name="consentConfirmed"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start gap-3 rounded-xl border p-3">
+                          <FormControl>
+                            <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
+                          </FormControl>
+                          <div className="space-y-1 leading-snug">
+                            <FormLabel className="font-semibold">I have consent to manage this person's health records</FormLabel>
+                            <p className="text-xs text-muted-foreground">
+                              Required for dependents. You are responsible for handling their medical information privately.
+                            </p>
+                            <FormMessage />
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
                   <Button
                     type="submit"

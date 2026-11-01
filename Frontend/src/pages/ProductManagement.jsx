@@ -69,7 +69,7 @@ export default function ProductManagement() {
       if (categoryFilter) params.append('category', categoryFilter);
 
       const response = await fetch(
-        `http://localhost:5000/api/products?${params}`,
+        `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/products?${params}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -106,16 +106,17 @@ export default function ProductManagement() {
     }
 
     try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
       const url = editingProduct
-        ? `http://localhost:5000/api/products/${editingProduct._id}`
-        : 'http://localhost:5000/api/products';
+        ? `${apiUrl}/products/${editingProduct._id}`
+        : `${apiUrl}/products`;
 
       const response = await fetch(url, {
         method: editingProduct ? 'PUT' : 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: formDataToSend,
       });
 
       const data = await response.json();
@@ -139,8 +140,9 @@ export default function ProductManagement() {
     if (!confirm('Are you sure you want to delete this product?')) return;
 
     try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
       const response = await fetch(
-        `http://localhost:5000/api/products/${productId}`,
+        `${apiUrl}/products/${productId}`,
         {
           method: 'DELETE',
           headers: {
@@ -241,13 +243,13 @@ export default function ProductManagement() {
                 />
               </div>
             </div>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <Select value={categoryFilter || "all"} onValueChange={(v) => setCategoryFilter(v === "all" ? "" : v)}>
               <SelectTrigger className="w-[200px]">
                 <Filter className="w-4 h-4 mr-2" />
                 <SelectValue placeholder="All Categories" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Categories</SelectItem>
+                <SelectItem value="all">All Categories</SelectItem>
                 {categories.map(cat => (
                   <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                 ))}

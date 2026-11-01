@@ -27,7 +27,7 @@ export function OtpVerification({ onVerified, email: initialEmail = '' }) {
   const [canResend, setCanResend] = useState(false);
   const timerRef = useRef(null);
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
   // Countdown timer
   useEffect(() => {

@@ -1,13 +1,16 @@
+import { formatAddress, formatHours } from "@/lib/format";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Pill, RefreshCcw, CheckCircle2, MapPin, Clock, Star, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { pharmacyService } from "@/services/apiService";
+import CatalogDialog from "@/components/marketplace/CatalogDialog";
 
 export default function Pharmacy() {
   const [pharmacies, setPharmacies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [viewing, setViewing] = useState(null);
 
   useEffect(() => {
     const fetchPharmacies = async () => {
@@ -92,11 +95,11 @@ export default function Pharmacy() {
                 <div className="space-y-2 mb-6">
                   <div className="flex items-center gap-2 text-sm">
                     <MapPin className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">{pharmacy.address || "Address not available"}</span>
+                    <span className="text-muted-foreground">{formatAddress(pharmacy.address)}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Clock className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">{pharmacy.operatingHours || "Hours not available"}</span>
+                    <span className="text-muted-foreground">{formatHours(pharmacy.operatingHours)}</span>
                   </div>
                   {pharmacy.deliveryAvailable && (
                     <div className="flex items-center gap-2 text-sm text-green-600">
@@ -107,8 +110,8 @@ export default function Pharmacy() {
                 </div>
 
                 <div className="mt-auto">
-                  <Button className="w-full btn-primary-gradient rounded-xl">
-                    <RefreshCcw className="w-4 h-4 mr-2" /> Order Medicines
+                  <Button onClick={() => setViewing(pharmacy)} className="w-full btn-primary-gradient rounded-xl">
+                    <RefreshCcw className="w-4 h-4 mr-2" /> View Products & Order
                   </Button>
                 </div>
               </div>
@@ -116,6 +119,9 @@ export default function Pharmacy() {
           </div>
         )}
       </div>
+      {viewing && (
+        <CatalogDialog kind="product" providerId={viewing._id} providerName={viewing.pharmacyName} onClose={() => setViewing(null)} />
+      )}
     </div>
   );
 }

@@ -1,8 +1,9 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { getStoredToken, getStoredUser } from '@/lib/session';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 // Get auth token from localStorage
 const getAuthToken = () => {
-  return localStorage.getItem('token');
+  return getStoredToken();
 };
 
 // Get or create consistent guest ID
@@ -29,26 +30,21 @@ const authenticatedFetch = async (url, options = {}) => {
     headers['x-guest-id'] = getGuestId();
   }
 
-  console.log(`Making request to: ${API_BASE_URL}${url}`, { token: token ? 'exists' : 'missing', guestId: token ? 'N/A' : getGuestId() });
-
   const response = await fetch(`${API_BASE_URL}${url}`, {
     ...options,
     credentials: 'include',
     headers,
   });
 
-  console.log(`Response status: ${response.status}`);
-
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('API Error:', errorText);
     let error;
     try {
       error = JSON.parse(errorText);
     } catch {
       error = { error: errorText || 'API request failed' };
     }
-    throw new Error(error.error || 'API request failed');
+    throw new Error(error.error || error.message || 'API request failed');
   }
 
   return response.json();

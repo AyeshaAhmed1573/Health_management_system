@@ -9,7 +9,7 @@ export default function MyOrders() {
   const { data: ordersData, isLoading } = useQuery({
     queryKey: ['my-orders'],
     queryFn: async () => {
-      const response = await fetch('http://localhost:5000/api/marketplace/orders', {
+      const response = await fetch('http://localhost:3000/api/marketplace/orders', {
         headers: {
           Authorization: `Bearer ${token}`,
         },

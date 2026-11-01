@@ -1,3 +1,4 @@
+import { getStoredToken, getStoredUser } from '@/lib/session';
 import React, { useState } from 'react';
 import { Upload, X, Calendar, FileText, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/lib/authContext';
@@ -79,10 +80,10 @@ export default function QuickActionUploadReport({ isOpen, onClose, profileId, on
       formData.append('testDate', testDate);
       formData.append('notes', notes.trim());
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/reports`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/reports`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${getStoredToken()}`,
         },
         body: formData,
       });

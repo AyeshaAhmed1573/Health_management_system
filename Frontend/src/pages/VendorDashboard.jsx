@@ -11,7 +11,8 @@ export default function VendorDashboard() {
   const { data: dashboardData, isLoading } = useQuery({
     queryKey: ['vendor-dashboard'],
     queryFn: async () => {
-      const response = await fetch('http://localhost:5000/api/dashboard/overview', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${apiUrl}/dashboard/overview`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -24,7 +25,8 @@ export default function VendorDashboard() {
   const { data: salesData } = useQuery({
     queryKey: ['vendor-sales-chart'],
     queryFn: async () => {
-      const response = await fetch('http://localhost:5000/api/dashboard/sales-chart?period=30d', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${apiUrl}/dashboard/sales-chart?period=30d`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

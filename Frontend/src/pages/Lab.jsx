@@ -1,13 +1,16 @@
+import { formatAddress, formatHours } from "@/lib/format";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Activity, Download, FileText, AlertCircle, MapPin, Clock, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { laboratoryService } from "@/services/apiService";
+import CatalogDialog from "@/components/marketplace/CatalogDialog";
 
 export default function Lab() {
   const [laboratories, setLaboratories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [viewing, setViewing] = useState(null);
 
   useEffect(() => {
     const fetchLaboratories = async () => {
@@ -93,17 +96,13 @@ export default function Lab() {
                   <div className="flex items-center gap-2 text-sm">
                     <MapPin className="w-4 h-4 text-muted-foreground" />
                     <span className="text-muted-foreground">
-                      {lab.address?.street && `${lab.address.street}, `}
-                      {lab.address?.city && `${lab.address.city}, `}
-                      {lab.address?.province && `${lab.address.province} `}
-                      {lab.address?.postalCode || "Address not available"}
+                      {formatAddress(lab.address)}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Clock className="w-4 h-4 text-muted-foreground" />
                     <span className="text-muted-foreground">
-                      {lab.operatingHours?.open && `${lab.operatingHours.open} - `}
-                      {lab.operatingHours?.close || lab.operatingHours || "Hours not available"}
+                      {formatHours(lab.operatingHours)}
                     </span>
                   </div>
                   {lab.homeCollection && (
@@ -114,7 +113,7 @@ export default function Lab() {
                   )}
                 </div>
 
-                <Button className="w-full mt-auto btn-primary-gradient rounded-xl">
+                <Button onClick={() => setViewing(lab)} className="w-full mt-auto btn-primary-gradient rounded-xl">
                   <Download className="w-4 h-4 mr-2" /> View Tests
                 </Button>
               </div>
@@ -122,6 +121,9 @@ export default function Lab() {
           </div>
         )}
       </div>
+      {viewing && (
+        <CatalogDialog kind="lab_test" providerId={viewing._id} providerName={viewing.labName} onClose={() => setViewing(null)} />
+      )}
     </div>
   );
 }

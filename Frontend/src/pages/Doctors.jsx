@@ -3,12 +3,14 @@ import { UserCircle, Star, Calendar, X, Phone, Mail, Clock, Stethoscope, Graduat
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { doctorService } from "@/services/apiService";
+import BookAppointmentDialog from "@/components/appointments/BookAppointmentDialog";
 
 export default function Doctors() {
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
+  const [bookingDoctor, setBookingDoctor] = useState(null);
 
   useEffect(() => {
     const fetchDoctors = async () => {
@@ -261,7 +263,7 @@ export default function Doctors() {
               </div>
 
               <div className="flex gap-3 mt-6">
-                <Button className="flex-1 bg-primary text-white hover:bg-primary/90 rounded-xl">
+                <Button onClick={() => { setBookingDoctor(selectedDoctor); setSelectedDoctor(null); }} className="flex-1 bg-primary text-white hover:bg-primary/90 rounded-xl">
                   <Calendar className="w-4 h-4 mr-2" /> Book Appointment
                 </Button>
                 <Button variant="outline" className="flex-1 rounded-xl">
@@ -272,6 +274,7 @@ export default function Doctors() {
           </div>
         </div>
       )}
+      {bookingDoctor && <BookAppointmentDialog doctor={bookingDoctor} onClose={() => setBookingDoctor(null)} />}
     </div>
   );
 }

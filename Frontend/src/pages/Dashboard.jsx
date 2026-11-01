@@ -35,6 +35,9 @@ import QuickActionUploadReport from "@/components/reports/QuickActionUploadRepor
 import AddHealthReadingModal from "@/components/health/AddHealthReadingModal";
 
 import ProductManagement from "@/pages/ProductManagement";
+import LabTestManagement from "@/pages/LabTestManagement";
+import AIInsightsPanel from "@/components/health/AIInsightsPanel";
+import { openProtectedFile } from "@/lib/session";
 
 
 
@@ -964,7 +967,7 @@ function AdminDashboard() {
 
 
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 
 
@@ -2300,9 +2303,8 @@ function AdminDashboard() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {selectedEntity.documents.licenseDocument && (
                       <a
-                        href={selectedEntity.documents.licenseDocument}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href="#"
+                        onClick={(e) => { e.preventDefault(); openProtectedFile(selectedEntity.documents.licenseDocument).catch((err) => alert(err.message)); }}
                         style={{
                           padding: '8px 12px',
                           borderRadius: 6,
@@ -2322,9 +2324,8 @@ function AdminDashboard() {
                     )}
                     {selectedEntity.documents.medicalDegreeDocument && (
                       <a
-                        href={selectedEntity.documents.medicalDegreeDocument}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href="#"
+                        onClick={(e) => { e.preventDefault(); openProtectedFile(selectedEntity.documents.medicalDegreeDocument).catch((err) => alert(err.message)); }}
                         style={{
                           padding: '8px 12px',
                           borderRadius: 6,
@@ -2344,9 +2345,8 @@ function AdminDashboard() {
                     )}
                     {selectedEntity.documents.hospitalProofDocument && (
                       <a
-                        href={selectedEntity.documents.hospitalProofDocument}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href="#"
+                        onClick={(e) => { e.preventDefault(); openProtectedFile(selectedEntity.documents.hospitalProofDocument).catch((err) => alert(err.message)); }}
                         style={{
                           padding: '8px 12px',
                           borderRadius: 6,
@@ -2366,9 +2366,8 @@ function AdminDashboard() {
                     )}
                     {selectedEntity.documents.clinicProofDocument && (
                       <a
-                        href={selectedEntity.documents.clinicProofDocument}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href="#"
+                        onClick={(e) => { e.preventDefault(); openProtectedFile(selectedEntity.documents.clinicProofDocument).catch((err) => alert(err.message)); }}
                         style={{
                           padding: '8px 12px',
                           borderRadius: 6,
@@ -2388,9 +2387,8 @@ function AdminDashboard() {
                     )}
                     {selectedEntity.documents.registrationDocument && (
                       <a
-                        href={selectedEntity.documents.registrationDocument}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href="#"
+                        onClick={(e) => { e.preventDefault(); openProtectedFile(selectedEntity.documents.registrationDocument).catch((err) => alert(err.message)); }}
                         style={{
                           padding: '8px 12px',
                           borderRadius: 6,
@@ -2410,9 +2408,8 @@ function AdminDashboard() {
                     )}
                     {selectedEntity.documents.addressProofDocument && (
                       <a
-                        href={selectedEntity.documents.addressProofDocument}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href="#"
+                        onClick={(e) => { e.preventDefault(); openProtectedFile(selectedEntity.documents.addressProofDocument).catch((err) => alert(err.message)); }}
                         style={{
                           padding: '8px 12px',
                           borderRadius: 6,
@@ -2432,9 +2429,8 @@ function AdminDashboard() {
                     )}
                     {selectedEntity.documents.idProofDocument && (
                       <a
-                        href={selectedEntity.documents.idProofDocument}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href="#"
+                        onClick={(e) => { e.preventDefault(); openProtectedFile(selectedEntity.documents.idProofDocument).catch((err) => alert(err.message)); }}
                         style={{
                           padding: '8px 12px',
                           borderRadius: 6,
@@ -2811,9 +2807,8 @@ function PatientDashboard({ currentUser }) {
     dateOfBirth: '',
 
     bloodGroup: '',
-
     gender: '',
-
+    consentConfirmed: false,
   });
 
 
@@ -3046,7 +3041,7 @@ function PatientDashboard({ currentUser }) {
 
       // Upload to Cloudinary
 
-      const cloudinaryResult = await reportsApi.uploadToCloudinary(file);
+      const cloudinaryResult = await reportsApi.uploadToCloudinary(file, activeProfile._id);
 
       console.log('Cloudinary result:', cloudinaryResult);
 
@@ -3135,7 +3130,7 @@ function PatientDashboard({ currentUser }) {
         relationship: newFamilyMember.relationship.toLowerCase(),
 
         gender: newFamilyMember.gender.toLowerCase(),
-
+        consentConfirmed: newFamilyMember.relationship.toLowerCase() === 'self' ? undefined : newFamilyMember.consentConfirmed,
       };
 
 
@@ -3163,9 +3158,8 @@ function PatientDashboard({ currentUser }) {
           dateOfBirth: '',
 
           bloodGroup: '',
-
           gender: '',
-
+          consentConfirmed: false,
         });
 
         alert('Family member added successfully!');
@@ -3255,6 +3249,7 @@ function PatientDashboard({ currentUser }) {
         readingsByDate[dateKey] = {
 
           m: dateKey,
+          ts: date.getTime(),
 
           weight: null,
 
@@ -3300,11 +3295,7 @@ function PatientDashboard({ currentUser }) {
 
     return Object.values(readingsByDate).sort((a, b) => {
 
-      const dateA = new Date(a.m);
-
-      const dateB = new Date(b.m);
-
-      return dateA - dateB;
+      return a.ts - b.ts;
 
     });
 
@@ -3504,11 +3495,11 @@ function PatientDashboard({ currentUser }) {
 
             },
 
-            { icon: CalendarCheck, label: "Book Appointment" },
+            { icon: CalendarCheck, label: "Book Appointment", onClick: () => navigate("/doctors") },
 
-            { icon: FlaskConical, label: "Book Lab Test" },
+            { icon: FlaskConical, label: "Book Lab Test", onClick: () => navigate("/lab") },
 
-            { icon: Pill, label: "Order Medicines" },
+            { icon: Pill, label: "Order Medicines", onClick: () => navigate("/pharmacy") },
 
             { icon: ActivityIcon, label: "Add Reading", onClick: () => setShowAddReadingModal(true) },
 
@@ -3696,11 +3687,11 @@ function PatientDashboard({ currentUser }) {
 
               <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ fontSize: 11, color: C.muted }}>{v}</span>} />
 
-              <Line type="monotone" dataKey="weight" name="Weight" stroke={C.primary} strokeWidth={2.5} dot={{ r: 3 }} connectNulls={false} />
+              <Line type="monotone" dataKey="weight" name="Weight" stroke={C.primary} strokeWidth={2.5} dot={{ r: 3 }} connectNulls />
 
-              <Line type="monotone" dataKey="bp" name="Blood pressure" stroke={C.primaryDark} strokeWidth={2.5} dot={{ r: 3 }} connectNulls={false} />
+              <Line type="monotone" dataKey="bp" name="Blood pressure" stroke={C.primaryDark} strokeWidth={2.5} dot={{ r: 3 }} connectNulls />
 
-              <Line type="monotone" dataKey="sugar" name="Sugar" stroke="#C9A24E" strokeWidth={2.5} dot={{ r: 3 }} connectNulls={false} />
+              <Line type="monotone" dataKey="sugar" name="Sugar" stroke="#C9A24E" strokeWidth={2.5} dot={{ r: 3 }} connectNulls />
 
             </LineChart>
 
@@ -3899,34 +3890,7 @@ function PatientDashboard({ currentUser }) {
 
 
       {/* AI Health Insights */}
-
-      <Panel title="AI Health Insights" subtitle="Powered by AI analysis">
-
-        <div style={{ padding: 16, background: "#F0F7F9", borderRadius: 12, border: `1px solid ${C.secondary}` }}>
-
-          <p style={{ margin: 0, fontSize: 13, color: C.text, fontWeight: 600, marginBottom: 8 }}>
-
-            📊 Health Summary
-
-          </p>
-
-          <p style={{ margin: "0 0 12px", fontSize: 12, color: C.muted }}>
-
-            Based on your recent health readings, your blood pressure and blood sugar levels are within normal ranges. 
-
-            Continue maintaining your current lifestyle and medication schedule.
-
-          </p>
-
-          <p style={{ margin: 0, fontSize: 11, color: C.primaryDark, fontStyle: "italic" }}>
-
-            ⚠️ Disclaimer: AI insights are for informational purposes only and should not replace professional medical advice.
-
-          </p>
-
-        </div>
-
-      </Panel>
+      <AIInsightsPanel profileId={activeProfile?._id} refreshKey={`${reports.length}-${healthReadings.length}`} />
 
 
 
@@ -4520,6 +4484,18 @@ function PatientDashboard({ currentUser }) {
 
               </div>
 
+              {newFamilyMember.relationship && newFamilyMember.relationship !== 'self' && (
+                <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 12, color: C.text, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    required
+                    checked={newFamilyMember.consentConfirmed}
+                    onChange={(e) => setNewFamilyMember({ ...newFamilyMember, consentConfirmed: e.target.checked })}
+                    style={{ marginTop: 2 }}
+                  />
+                  <span>I have consent to manage this person's health records and will keep their information private.</span>
+                </label>
+              )}
               <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
 
                 <button
@@ -4646,7 +4622,7 @@ function PatientDashboard({ currentUser }) {
 
 
 
-function LabDashboard() {
+function LabOverview({ onManageTests }) {
 
   return (
 
@@ -4778,6 +4754,7 @@ function LabDashboard() {
 
           actions={[
 
+            { icon: Package, label: "Manage Lab Tests", onClick: onManageTests },
             { icon: FlaskConical, label: "Log test" },
 
             { icon: Package, label: "Update sample status" },
@@ -4798,7 +4775,28 @@ function LabDashboard() {
 
 
 
+function LabDashboard() {
+  const [showTests, setShowTests] = useState(false);
+
+  return showTests ? (
+    <div style={{ background: C.card, borderRadius: 12, padding: 24 }}>
+      <div style={{ marginBottom: 16 }}>
+        <button
+          onClick={() => setShowTests(false)}
+          style={{ padding: "8px 16px", background: C.bg, border: "none", borderRadius: 8, cursor: "pointer", fontSize: 14, fontWeight: 600, color: C.text }}
+        >
+          ← Back to Dashboard
+        </button>
+      </div>
+      <LabTestManagement />
+    </div>
+  ) : (
+    <LabOverview onManageTests={() => setShowTests(true)} />
+  );
+}
+
 function PharmacyDashboard() {
+  const [, navigate] = useLocation();
   const [showProductManagement, setShowProductManagement] = useState(false);
 
   return (
@@ -4902,7 +4900,7 @@ function PharmacyDashboard() {
           <QuickActions
             actions={[
               { icon: Package, label: "Manage Products", onClick: () => setShowProductManagement(true) },
-              { icon: FileText, label: "View Prescriptions" },
+              { icon: FileText, label: "View Prescriptions", onClick: () => navigate("/prescriptions") },
               { icon: DollarSign, label: "Process Orders" },
               { icon: Users, label: "Customer Reviews" },
             ]}
@@ -4997,11 +4995,14 @@ const ROLE_META = {
 
 
 
+// The backend calls this role "laboratory"; the dashboard config below is keyed "lab".
+const dashRole = (r) => (r === "laboratory" ? "lab" : r);
+
 function greetingFor(user) {
 
   if (user.role === "admin") return "Facility overview";
 
-  if (user.role === "lab") return user.name + " — Diagnostics";
+  if (dashRole(user.role) === "lab") return user.name + " — Diagnostics";
 
   if (user.role === "pharmacy") return user.name + " — Pharmacy";
 
@@ -5013,11 +5014,11 @@ function greetingFor(user) {
 
 function subtitleFor(user) {
 
-  if (user.role === "doctor" && user.specialization) return `${ROLE_META[user.role].label} · ${user.specialization}`;
+  if (user.role === "doctor" && user.specialization) return `${ROLE_META[dashRole(user.role)].label} · ${user.specialization}`;
 
   if (user.role === "patient" && user.condition) return `Patient · ${user.condition}`;
 
-  return ROLE_META[user.role].label + " dashboard";
+  return (ROLE_META[dashRole(user.role)]?.label || "Account") + " dashboard";
 
 }
 
@@ -5037,7 +5038,7 @@ export default function HealthcarePlatform({ currentUser }) {
 
   const notificationRef = useRef(null);
 
-  const role = currentUser.role;
+  const role = dashRole(currentUser.role);
 
   const meta = ROLE_META[role];
 
@@ -5063,7 +5064,7 @@ export default function HealthcarePlatform({ currentUser }) {
 
     try {
 
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
       const response = await fetch(`${API_BASE_URL}/admin/approvals/pending`, {
 

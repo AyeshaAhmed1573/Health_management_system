@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 
 import { useAuth } from "@/hooks/use-auth";
 
-import { HeartPulse, UserCircle, LogOut, Menu, Activity, Pill, Bot, Users, MessageSquare, FileText, LayoutDashboard } from "lucide-react";
+import { HeartPulse, UserCircle, LogOut, Menu, Activity, Pill, Bot, Users, MessageSquare, FileText, LayoutDashboard, CalendarCheck, Receipt, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -47,6 +47,15 @@ export default function Navbar() {
     { label: "Laboratories", href: "/lab", icon: MessageSquare },
     { label: "Pharmacy", href: "/pharmacy", icon: Pill },
     { label: "Chat Center", href: "/chat-center", icon: MessageSquare },
+    // new modules (role-aware)
+    ...(isAuthenticated && user?.role === "patient" ? [
+      { label: "Appointments", href: "/appointments", icon: CalendarCheck },
+      { label: "Prescriptions", href: "/prescriptions", icon: Pill },
+      { label: "Payments", href: "/payments", icon: Receipt },
+    ] : []),
+    ...(isAuthenticated && user?.role === "doctor" ? [{ label: "My Appointments", href: "/doctor/appointments", icon: CalendarCheck }] : []),
+    ...(isAuthenticated && user?.role === "pharmacy" ? [{ label: "Prescriptions", href: "/prescriptions", icon: Pill }] : []),
+    ...(isAuthenticated ? [{ label: "Security", href: "/security", icon: ShieldCheck }] : []),
   ];
 
 

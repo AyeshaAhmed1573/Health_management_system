@@ -1,3 +1,4 @@
+import { openProtectedFile } from "@/lib/session";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -155,7 +156,11 @@ export default function ReportDetail({ reportId, open, onOpenChange, onCompare }
 
                   {report.fileUrl && (
                     <Button
-                      onClick={() => window.open(report.fileUrl, "_blank")}
+                      onClick={() =>
+                        /^(https?:|data:)/i.test(report.fileUrl)
+                          ? window.open(report.fileUrl, "_blank")
+                          : openProtectedFile(`/api/reports/${report._id || report.id}/file`).catch((e) => alert(e.message))
+                      }
                       variant="outline"
                       size="sm"
                       className="rounded-xl border-primary/30 text-primary hover:bg-primary/10 gap-1.5"
@@ -167,18 +172,30 @@ export default function ReportDetail({ reportId, open, onOpenChange, onCompare }
               </div>
             </div>
 
-            {/* Section 2: AI Summary */}
-            <div className="bg-secondary/40 p-5 rounded-2xl border border-border/50">
+            {/* Section 2: Layman Explanation */}
+            <div className="bg-primary/5 p-5 rounded-2xl border border-primary/20">
               <h3 className="text-base font-bold font-display text-foreground mb-2 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-primary" /> What This Report Says
+                <Sparkles className="w-4 h-4 text-primary" /> Simple Explanation
               </h3>
               <p className="text-sm text-foreground/90 leading-relaxed">
-                {report.aiSummary || "No summary available for this report."}
+                {report.aiLaymanExplanation || report.aiSummary || "No explanation available for this report."}
               </p>
             </div>
 
+            {/* Section 3: AI Summary (Technical) */}
+            {report.aiSummary && report.aiSummary !== report.aiLaymanExplanation && (
+              <div className="bg-secondary/40 p-5 rounded-2xl border border-border/50">
+                <h3 className="text-base font-bold font-display text-foreground mb-2 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-primary" /> Medical Summary
+                </h3>
+                <p className="text-sm text-foreground/90 leading-relaxed">
+                  {report.aiSummary}
+                </p>
+              </div>
+            )}
+
             {/* Section 3: Key Values Table */}
-            {report.aiHighlights && report.aiHighlights.length > 0 && (
+            {(report.aiHighlights && report.aiHighlights.length > 0) || (report.extractedValues && report.extractedValues.length > 0) ? (
               <div>
                 <h3 className="text-base font-bold font-display text-foreground mb-3 flex items-center gap-2">
                   <FileText className="w-4 h-4 text-primary" /> Key Extracted Values
@@ -194,10 +211,11 @@ export default function ReportDetail({ reportId, open, onOpenChange, onCompare }
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/40">
-                      {report.aiHighlights.map((item, idx) => {
+                      {/* Show AI highlights first if available */}
+                      {report.aiHighlights && report.aiHighlights.length > 0 && report.aiHighlights.map((item, idx) => {
                         const badgeInfo = getHighlightStatusBadge(item.status);
                         return (
-                          <tr key={idx} className="hover:bg-secondary/20 transition-colors">
+                          <tr key={`ai-${idx}`} className="hover:bg-secondary/20 transition-colors">
                             <td className="p-3 font-semibold text-foreground">{item.label}</td>
                             <td className="p-3 font-bold text-foreground">{item.value}</td>
                             <td className="p-3">
@@ -214,9 +232,36 @@ export default function ReportDetail({ reportId, open, onOpenChange, onCompare }
                           </tr>
                         );
                       })}
+                      {/* Show extracted values if no AI highlights or as fallback */}
+                      {(!report.aiHighlights || report.aiHighlights.length === 0) && report.extractedValues && report.extractedValues.map((item, idx) => {
+                        const badgeInfo = getHighlightStatusBadge(item.isAbnormal ? (item.isAbnormal ? 'high' : 'normal') : 'normal');
+                        return (
+                          <tr key={`extracted-${idx}`} className="hover:bg-secondary/20 transition-colors">
+                            <td className="p-3 font-semibold text-foreground">{item.parameterName}</td>
+                            <td className="p-3 font-bold text-foreground">{item.value} {item.unit || ''}</td>
+                            <td className="p-3">
+                              <span
+                                className={`inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full border ${badgeInfo.style}`}
+                              >
+                                {badgeInfo.icon}
+                                {item.isAbnormal ? 'ABNORMAL' : 'NORMAL'}
+                              </span>
+                            </td>
+                            <td className="p-3 text-xs text-secondary-foreground font-medium">
+                              {item.referenceRange || "Standard reference"}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
+              </div>
+            ) : (
+              <div className="bg-secondary/30 p-5 rounded-2xl border border-border/50">
+                <p className="text-sm text-secondary-foreground">
+                  No extracted values available for this report.
+                </p>
               </div>
             )}
 

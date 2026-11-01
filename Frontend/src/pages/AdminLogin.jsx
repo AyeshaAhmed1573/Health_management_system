@@ -193,6 +193,10 @@ export default function AdminLogin() {
             textAlign: 'center',
           }}
         >
+          <a href="/forgot-password" style={{ color: C.primary, textDecoration: 'none', fontWeight: 600 }}>
+            Forgot your password?
+          </a>
+          <br />
           <a href="/" style={{ color: C.primary, textDecoration: 'none', fontWeight: 600 }}>
             ← Back to Home
           </a>

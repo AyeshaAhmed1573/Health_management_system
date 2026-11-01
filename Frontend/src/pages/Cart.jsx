@@ -15,7 +15,7 @@ export default function Cart() {
   const { data: cartData, isLoading } = useQuery({
     queryKey: ['cart'],
     queryFn: async () => {
-      const response = await fetch('http://localhost:5000/api/marketplace/cart', {
+      const response = await fetch('http://localhost:3000/api/marketplace/cart', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -27,7 +27,7 @@ export default function Cart() {
 
   const updateQuantityMutation = useMutation({
     mutationFn: async ({ itemId, quantity }) => {
-      const response = await fetch(`http://localhost:5000/api/marketplace/cart/${itemId}`, {
+      const response = await fetch(`http://localhost:3000/api/marketplace/cart/${itemId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -44,7 +44,7 @@ export default function Cart() {
 
   const removeItemMutation = useMutation({
     mutationFn: async (itemId) => {
-      const response = await fetch(`http://localhost:5000/api/marketplace/cart/${itemId}`, {
+      const response = await fetch(`http://localhost:3000/api/marketplace/cart/${itemId}`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -63,7 +63,7 @@ export default function Cart() {
 
   const clearCartMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch('http://localhost:5000/api/marketplace/cart', {
+      const response = await fetch('http://localhost:3000/api/marketplace/cart', {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${token}`,

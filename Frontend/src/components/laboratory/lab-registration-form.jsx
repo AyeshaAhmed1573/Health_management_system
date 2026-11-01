@@ -286,7 +286,7 @@ export function LabRegistrationForm() {
 
       },
 
-      'lab',
+      'laboratory',
 
       files
 

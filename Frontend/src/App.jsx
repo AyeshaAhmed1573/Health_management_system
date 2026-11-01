@@ -88,6 +88,20 @@ import Dashboard from "@/pages/Dashboard";
 
 import DashboardLogin from "@/pages/DashboardLogin";
 
+import ForgotPassword from "@/pages/ForgotPassword";
+
+import ResetPassword from "@/pages/ResetPassword";
+
+import Appointments from "@/pages/Appointments";
+
+import DoctorAppointments from "@/pages/DoctorAppointments";
+
+import Prescriptions from "@/pages/Prescriptions";
+
+import Payments from "@/pages/Payments";
+
+import Security from "@/pages/Security";
+
 
 
 function Router() {
@@ -160,6 +174,17 @@ function Router() {
         <Route path="/checkout" component={Checkout} />
         <Route path="/my-orders" component={MyOrders} />
 
+        {/* Account recovery + security */}
+        <Route path="/forgot-password" component={ForgotPassword} />
+        <Route path="/reset-password" component={ResetPassword} />
+        <Route path="/security">{() => user ? <Security /> : <PatientLogin />}</Route>
+
+        {/* Appointments, prescriptions, payments (login required; the API enforces roles) */}
+        <Route path="/appointments">{() => user ? (user.role === 'patient' ? <Appointments /> : <NotFound />) : <PatientLogin />}</Route>
+        <Route path="/doctor/appointments">{() => user ? (user.role === 'doctor' ? <DoctorAppointments /> : <NotFound />) : <DoctorLogin />}</Route>
+        <Route path="/prescriptions">{() => user ? (['patient', 'pharmacy'].includes(user.role) ? <Prescriptions /> : <NotFound />) : <PatientLogin />}</Route>
+        <Route path="/payments">{() => user ? (user.role === 'patient' ? <Payments /> : <NotFound />) : <PatientLogin />}</Route>
+
         {/* Role-specific signup routes */}
 
         <Route path="/admin-signup" component={AdminSignup} />
@@ -187,7 +212,7 @@ function Router() {
           {() => user ? (user.role === 'doctor' ? <Dashboard currentUser={user} /> : <NotFound />) : <DashboardLogin />}
         </Route>
         <Route path="/lab/dashboard">
-          {() => user ? (user.role === 'lab' ? <Dashboard currentUser={user} /> : <NotFound />) : <DashboardLogin />}
+          {() => user ? (user.role === 'laboratory' ? <Dashboard currentUser={user} /> : <NotFound />) : <DashboardLogin />}
         </Route>
         <Route path="/pharmacy/dashboard">
           {() => user ? (user.role === 'pharmacy' ? <Dashboard currentUser={user} /> : <NotFound />) : <DashboardLogin />}

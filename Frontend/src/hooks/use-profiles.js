@@ -21,6 +21,7 @@ export function useProfiles() {
         name: p.name || "Patient Profile",
         relationship: p.relationship || "self",
         createdAt: p.createdAt,
+        consentGiven: p.consent?.given,
       }));
     },
   });

@@ -27,7 +27,7 @@ export default function LaboratoryLogin() {
     setError('');
     setLoading(true);
 
-    const result = await login(email, password, 'lab');
+    const result = await login(email, password, 'laboratory');
 
     if (result.success) {
       navigate('/lab/dashboard');
@@ -195,6 +195,10 @@ export default function LaboratoryLogin() {
         >
           <a href="/laboratory-signup" style={{ color: C.primary, textDecoration: 'none', fontWeight: 600 }}>
             Create a laboratory account →
+          </a>
+          <br />
+          <a href="/forgot-password" style={{ color: C.primary, textDecoration: 'none', fontWeight: 600 }}>
+            Forgot your password?
           </a>
           <br />
           <a href="/" style={{ color: C.muted, textDecoration: 'none', fontWeight: 600 }}>

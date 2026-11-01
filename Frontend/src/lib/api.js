@@ -1,6 +1,7 @@
 import { z } from "zod";
+import { API_BASE as API_BASE_URL, getStoredToken, openProtectedFile } from "./session";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+export { openProtectedFile };
 
 export const errorSchemas = {
   validation: z.object({
@@ -15,12 +16,16 @@ export const errorSchemas = {
 export const insertProfileSchema = z.object({
   name: z.string().min(1, "Name is required"),
   relationship: z.string().min(1, "Relationship is required"),
-  userId: z.string(),
+  userId: z.string().optional(),
+  consentConfirmed: z.boolean().optional(),
+}).refine((v) => v.relationship === "self" || v.consentConfirmed === true, {
+  message: "Please confirm you have consent to manage this person's health records",
+  path: ["consentConfirmed"],
 });
 
 // API helper functions
 const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
+  const token = getStoredToken();
   return {
     'Content-Type': 'application/json',
     ...(token && { 'Authorization': `Bearer ${token}` }),
@@ -201,24 +206,27 @@ export const notificationsApi = {
 
 // Medical Reports API
 export const reportsApi = {
-  uploadToCloudinary: async (file) => {
+  // Uploads through our backend, which signs the request with the Cloudinary API secret.
+  // (The old browser-side upload needed an unsigned preset that did not exist, so it always failed.)
+  uploadToCloudinary: async (file, profileId) => {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('upload_preset', 'medical_reports_preset'); // You need to create this in Cloudinary
-    
-    const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'uvbyxjyx'}/image/upload`,
-      {
-        method: 'POST',
-        body: formData,
-      }
-    );
-    
+    if (profileId) formData.append('profileId', profileId);
+
+    const token = getStoredToken();
+    const response = await fetch(`${API_BASE_URL}/reports/upload-file`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
     const data = await response.json();
-    return {
-      fileUrl: data.secure_url,
-      publicId: data.public_id,
-    };
+    if (!response.ok || !data.success) throw new Error(data.error || 'File upload failed');
+    return { fileUrl: data.fileUrl, publicId: data.publicId };
+  },
+
+  getInsights: async (profileId) => {
+    const response = await fetch(`${API_BASE_URL}/reports/insights/${profileId}`, { headers: getAuthHeaders() });
+    return response.json();
   },
   
   upload: async (reportData) => {
@@ -347,5 +355,73 @@ export const chatApi = {
       headers: getAuthHeaders(),
     });
     return response.json();
+  },
+};
+
+
+// ---------------------------------------------------------------------------
+// Shared request helper for the newer modules (parses errors consistently)
+// ---------------------------------------------------------------------------
+async function request(method, path, body) {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method,
+    headers: getAuthHeaders(),
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.error || data.message || `Request failed (${res.status})`);
+    err.status = res.status;
+    err.code = data.code;
+    throw err;
+  }
+  return data;
+}
+
+// Account security: password reset, change password, optional 2FA
+export const authApi = {
+  forgotPassword: (email) => request('POST', '/auth/forgot-password', { email }),
+  resetPassword: (payload) => request('POST', '/auth/reset-password', payload),
+  changePassword: (currentPassword, newPassword) => request('POST', '/auth/change-password', { currentPassword, newPassword }),
+  me: () => request('GET', '/auth/me'),
+  startEnableTwoFactor: () => request('POST', '/auth/2fa/enable'),
+  confirmEnableTwoFactor: (code) => request('POST', '/auth/2fa/confirm', { code }),
+  disableTwoFactor: (password) => request('POST', '/auth/2fa/disable', { password }),
+};
+
+// Appointments (booking per profile, availability, status, notes)
+export const appointmentsApi = {
+  book: (payload) => request('POST', '/appointments', payload),
+  mine: (params = {}) => request('GET', `/appointments/mine?${new URLSearchParams(params)}`),
+  doctorSchedule: (params = {}) => request('GET', `/appointments/doctor/me?${new URLSearchParams(params)}`),
+  availability: (doctorId, date) => request('GET', `/appointments/doctors/${doctorId}/availability?date=${date}`),
+  get: (id) => request('GET', `/appointments/${id}`),
+  setStatus: (id, status, reason) => request('PATCH', `/appointments/${id}/status`, { status, reason }),
+  saveNotes: (id, consultationNotes) => request('PATCH', `/appointments/${id}/notes`, { consultationNotes }),
+  getAvailability: () => request('GET', '/appointments/doctor/availability'),
+  setAvailability: (availableSlots) => request('PUT', '/appointments/doctor/availability', { availableSlots }),
+};
+
+// Prescriptions
+export const prescriptionsApi = {
+  create: (payload) => request('POST', '/prescriptions', payload),
+  byProfile: (profileId) => request('GET', `/prescriptions/profile/${profileId}`),
+  get: (id) => request('GET', `/prescriptions/${id}`),
+  shareWithPharmacy: (id, pharmacyId) => request('POST', `/prescriptions/${id}/share`, { pharmacyId, consent: true }),
+  sharedWithMe: () => request('GET', '/prescriptions/shared-with-me'),
+};
+
+// Payments
+export const paymentsApi = {
+  createIntent: (kind, refId, method) => request('POST', '/payments/intent', { kind, refId, method }),
+  confirmSandbox: (id) => request('POST', `/payments/${id}/confirm`),
+  history: (params = {}) => request('GET', `/payments/history?${new URLSearchParams(params)}`),
+  get: (id) => request('GET', `/payments/${id}`),
+};
+
+export const pharmaciesApi = {
+  listVerified: async () => {
+    const data = await request('GET', '/pharmacies?verificationStatus=verified');
+    return data.pharmacies || [];
   },
 };

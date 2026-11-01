@@ -25,7 +25,7 @@ export default function Marketplace() {
     queryKey: ['marketplace-products', filters],
     queryFn: async () => {
       const params = new URLSearchParams(filters);
-      const response = await fetch(`http://localhost:5000/api/marketplace/products?${params}`);
+      const response = await fetch(`http://localhost:3000/api/marketplace/products?${params}`);
       if (!response.ok) throw new Error('Failed to fetch products');
       return response.json();
     },
@@ -35,7 +35,7 @@ export default function Marketplace() {
     queryKey: ['marketplace-lab-tests', filters],
     queryFn: async () => {
       const params = new URLSearchParams(filters);
-      const response = await fetch(`http://localhost:5000/api/marketplace/lab-tests?${params}`);
+      const response = await fetch(`http://localhost:3000/api/marketplace/lab-tests?${params}`);
       if (!response.ok) throw new Error('Failed to fetch lab tests');
       return response.json();
     },
@@ -43,7 +43,7 @@ export default function Marketplace() {
 
   const addToCart = async (item) => {
     try {
-      const response = await fetch('http://localhost:5000/api/marketplace/cart', {
+      const response = await fetch('http://localhost:3000/api/marketplace/cart', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

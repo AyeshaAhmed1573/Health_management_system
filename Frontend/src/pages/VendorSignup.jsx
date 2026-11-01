@@ -60,7 +60,8 @@ export default function VendorSignup() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/vendors/register', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${apiUrl}/vendors/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

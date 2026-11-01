@@ -1,3 +1,4 @@
+import { getStoredToken, getStoredUser } from '@/lib/session';
 import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { useQueryClient } from "@tanstack/react-query";
@@ -152,13 +153,14 @@ export default function ReportUpload({ open, onOpenChange, profiles, activeProfi
     if (pid) return pid;
 
     // Try to fetch existing profiles first
-    const token = localStorage.getItem('token');
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const token = getStoredToken();
+    const user = getStoredUser() || {};
     const userId = user._id || user.id;
     
     if (userId) {
       try {
-        const res = await fetch(`http://localhost:5000/api/profiles/user/${userId}`, {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+        const res = await fetch(`${apiUrl}/profiles/user/${userId}`, {
           headers: { ...(token && { "Authorization": `Bearer ${token}` }) },
         });
         if (res.ok) {
@@ -177,7 +179,8 @@ export default function ReportUpload({ open, onOpenChange, profiles, activeProfi
     setStatusMessage("Creating patient profile...");
     const profileName = newProfileName.trim() || "My Health Record";
     
-    const res = await fetch("http://localhost:5000/api/profiles", {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+    const res = await fetch(`${apiUrl}/profiles`, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
@@ -246,8 +249,9 @@ export default function ReportUpload({ open, onOpenChange, profiles, activeProfi
         extractedText,
       };
 
-      const token = localStorage.getItem('token');
-      const response = await fetch("http://localhost:5000/api/reports", {
+      const token = getStoredToken();
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+      const response = await fetch(`${apiUrl}/reports`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
