@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 
 import { useLocation } from "wouter";
 
@@ -28,7 +28,7 @@ import {
 
 import { useAuth } from "@/lib/authContext";
 
-import { patientProfilesApi, healthReadingsApi, notificationsApi, reportsApi } from "@/lib/api";
+import { patientProfilesApi, healthReadingsApi, notificationsApi, reportsApi, doctorDashboardApi } from "@/lib/api";
 
 import QuickActionUploadReport from "@/components/reports/QuickActionUploadReport";
 
@@ -38,6 +38,7 @@ import ProductManagement from "@/pages/ProductManagement";
 import LabTestManagement from "@/pages/LabTestManagement";
 import AIInsightsPanel from "@/components/health/AIInsightsPanel";
 import { openProtectedFile } from "@/lib/session";
+import { getSocket } from "@/lib/socket";
 
 
 
@@ -608,6 +609,22 @@ function Panel({ title, subtitle, children, span }) {
       </div>
 
       {children}
+
+    </div>
+
+  );
+
+}
+
+
+
+function ChartEmpty({ label = "No data yet" }) {
+
+  return (
+
+    <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, fontSize: 13 }}>
+
+      {label}
 
     </div>
 
@@ -2620,21 +2637,133 @@ function AdminDashboard() {
 
 function DoctorDashboard({ currentUser }) {
 
-  const patientIds = currentUser?.patients ?? [];
+  const [, navigate] = useLocation();
 
-  const filteredSchedule = patientIds.length
+  const [data, setData] = useState(null);
 
-    ? doctor.schedule.slice(0, Math.min(patientIds.length, doctor.schedule.length))
+  const [loading, setLoading] = useState(true);
 
-    : doctor.schedule;
+  const [error, setError] = useState("");
+
+
+
+  const load = useCallback(async () => {
+
+    try {
+
+      const result = await doctorDashboardApi.overview();
+
+      setData(result.data || null);
+
+      setError("");
+
+    } catch (err) {
+
+      setError(err.message || "Could not load dashboard data");
+
+    } finally {
+
+      setLoading(false);
+
+    }
+
+  }, []);
+
+
+
+  useEffect(() => {
+
+    load();
+
+    const interval = window.setInterval(load, 30000);
+
+    const onVisible = () => {
+
+      if (document.visibilityState === "visible") load();
+
+    };
+
+    const socket = getSocket();
+
+    const onRefresh = () => load();
+
+    document.addEventListener("visibilitychange", onVisible);
+
+    socket?.on("doctor-dashboard:refresh", onRefresh);
+
+    return () => {
+
+      window.clearInterval(interval);
+
+      document.removeEventListener("visibilitychange", onVisible);
+
+      socket?.off("doctor-dashboard:refresh", onRefresh);
+
+    };
+
+  }, [load]);
+
+
+
+  const stats = data?.stats || {};
+
+  const charts = data?.charts || {};
+
+  const todaySchedule = data?.todaySchedule || [];
+
+  const recentActivity = data?.recentActivity || [];
+
+  const pendingReports = data?.pendingReports || [];
+
+  const isLoading = loading && !data;
+
+  const displayValue = (value) => (isLoading ? "…" : value ?? 0);
+
+
+
+  const metrics = [
+
+    { label: "Total appointments", value: displayValue(stats.totalAppointments), icon: CalendarCheck },
+
+    { label: "Pending appointments", value: displayValue(stats.pendingAppointments), icon: Clock },
+
+    { label: "Confirmed appointments", value: displayValue(stats.confirmedAppointments), icon: CheckCircle2 },
+
+    { label: "Completed appointments", value: displayValue(stats.completedAppointments), icon: CheckCircle },
+
+    { label: "Total patients", value: displayValue(stats.totalPatients), icon: Users },
+
+    { label: "Prescriptions written", value: displayValue(stats.prescriptionsWritten), icon: Pill },
+
+    { label: "Average rating", value: isLoading ? "…" : stats.averageRating == null ? "N/A" : stats.averageRating.toFixed(1), icon: Star },
+
+    { label: "Today's appointments", value: displayValue(stats.todaysAppointments), icon: Activity },
+
+    { label: "Pending lab reports", value: displayValue(stats.pendingLabReports), icon: FileText },
+
+    { label: "Completed lab reports", value: displayValue(stats.completedLabReports), icon: FlaskConical },
+
+  ];
+
+
 
   return (
 
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
+      {error && (
+
+        <div style={{ background: "#FFF4F0", border: "1px solid #F3C7B8", color: C.down, borderRadius: 12, padding: "10px 14px", fontSize: 13, fontWeight: 600 }}>
+
+          {error}
+
+        </div>
+
+      )}
+
       <div style={grid(3)} className="responsive-grid-6">
 
-        {doctor.metrics.map((m, i) => (
+        {metrics.map((m, i) => (
 
           <MetricCard key={i} m={m} />
 
@@ -2646,37 +2775,37 @@ function DoctorDashboard({ currentUser }) {
 
         <Panel title="Weekly appointment schedule">
 
-          <BarC data={doctor.weeklySchedule} xKey="d" yKey="v" />
+          {(charts.weeklySchedule || []).length ? <BarC data={charts.weeklySchedule} xKey="d" yKey="v" /> : <ChartEmpty />}
 
         </Panel>
 
         <Panel title="Patient demographics" subtitle="By age group">
 
-          <PieC data={doctor.demographics} nameKey="n" valueKey="v" />
+          {(charts.demographics || []).length ? <PieC data={charts.demographics} nameKey="n" valueKey="v" /> : <ChartEmpty />}
 
         </Panel>
 
-        <Panel title="Common diagnoses" subtitle="Case count, last 90 days">
+        <Panel title="Common diagnoses" subtitle="Prescription diagnoses, last 90 days">
 
-          <BarC data={doctor.diagnoses} xKey="d" yKey="v" horizontal color={C.accent} />
+          {(charts.diagnoses || []).length ? <BarC data={charts.diagnoses} xKey="d" yKey="v" horizontal color={C.accent} /> : <ChartEmpty />}
 
         </Panel>
 
-        <Panel title="Treatment outcomes" subtitle="Positive outcome rate">
+        <Panel title="Appointment outcomes" subtitle="Status distribution">
 
-          <LineC data={doctor.outcomes} xKey="m" yKey="v" unit="%" color={C.primaryDark} />
+          {(charts.appointmentOutcomes || []).some((item) => item.v > 0) ? <PieC data={charts.appointmentOutcomes} nameKey="n" valueKey="v" /> : <ChartEmpty />}
 
         </Panel>
 
         <Panel title="Prescription trends" subtitle="Monthly volume">
 
-          <BarC data={doctor.prescriptionTrend} xKey="m" yKey="v" />
+          {(charts.prescriptionTrend || []).some((item) => item.v > 0) ? <BarC data={charts.prescriptionTrend} xKey="m" yKey="v" /> : <ChartEmpty />}
 
         </Panel>
 
-        <Panel title="Patient satisfaction" subtitle="Score by category">
+        <Panel title="Monthly activity" subtitle="Appointments by month">
 
-          <RadarC data={doctor.satisfaction} />
+          {(charts.monthlyActivity || []).some((item) => item.v > 0) ? <LineC data={charts.monthlyActivity} xKey="m" yKey="v" color={C.primaryDark} /> : <ChartEmpty />}
 
         </Panel>
 
@@ -2690,51 +2819,63 @@ function DoctorDashboard({ currentUser }) {
 
             <div style={{ display: "flex", flexDirection: "column" }}>
 
-              {filteredSchedule.map((s, i) => (
+              {todaySchedule.length === 0 ? (
 
-                <div
+                <p style={{ margin: 0, padding: "18px 0", textAlign: "center", color: C.muted, fontSize: 13 }}>
 
-                  key={i}
+                  No appointments scheduled for today.
 
-                  style={{
+                </p>
 
-                    display: "flex", alignItems: "center", gap: 14, padding: "10px 0",
+              ) : (
 
-                    borderBottom: i < filteredSchedule.length - 1 ? `1px solid ${C.secondary}` : "none",
+                todaySchedule.map((s, i) => (
 
-                  }}
+                  <div
 
-                >
-
-                  <span style={{ fontFamily: numFont, fontWeight: 700, fontSize: 13, color: C.primaryDark, width: 50 }}>{s.time}</span>
-
-                  <div style={{ flex: 1, minWidth: 0 }}>
-
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text }}>{s.name}</p>
-
-                    <p style={{ margin: 0, fontSize: 11.5, color: C.muted }}>{s.type}</p>
-
-                  </div>
-
-                  <span
+                    key={s.id || i}
 
                     style={{
 
-                      fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20,
+                      display: "flex", alignItems: "center", gap: 14, padding: "10px 0",
 
-                      background: C.secondary, color: C.primaryDark, flexShrink: 0,
+                      borderBottom: i < todaySchedule.length - 1 ? `1px solid ${C.secondary}` : "none",
 
                     }}
 
                   >
 
-                    {s.status}
+                    <span style={{ fontFamily: numFont, fontWeight: 700, fontSize: 13, color: C.primaryDark, width: 50 }}>{s.time}</span>
 
-                  </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
 
-                </div>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text }}>{s.patient}</p>
 
-              ))}
+                      <p style={{ margin: 0, fontSize: 11.5, color: C.muted }}>{s.type}{s.reason ? ` · ${s.reason}` : ""}</p>
+
+                    </div>
+
+                    <span
+
+                      style={{
+
+                        fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20,
+
+                        background: C.secondary, color: C.primaryDark, flexShrink: 0, textTransform: "capitalize",
+
+                      }}
+
+                    >
+
+                      {s.status?.replace("_", " ")}
+
+                    </span>
+
+                  </div>
+
+                ))
+
+              )}
 
             </div>
 
@@ -2746,15 +2887,129 @@ function DoctorDashboard({ currentUser }) {
 
           actions={[
 
-            { icon: Pill, label: "Write prescription" },
+            { icon: CalendarCheck, label: "View appointments", onClick: () => navigate("/doctor/appointments") },
 
-            { icon: FileText, label: "View patient history" },
+            { icon: Pill, label: "Write prescription", onClick: () => navigate("/doctor/appointments") },
 
-            { icon: Syringe, label: "Schedule surgery" },
+            { icon: ClipboardList, label: "Patient records", onClick: () => navigate("/doctor/appointments") },
 
           ]}
 
         />
+
+      </div>
+
+      <div style={grid(2)} className="responsive-grid-2">
+
+        <Panel title="Pending lab reports" subtitle="Reports awaiting completion for your patients">
+
+          <div style={{ display: "flex", flexDirection: "column" }}>
+
+            {stats.needsReviewReports > 0 && (
+
+              <p style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 700, color: C.down }}>
+
+                {stats.needsReviewReports} uploaded {stats.needsReviewReports === 1 ? "report needs" : "reports need"} manual review.
+
+              </p>
+
+            )}
+
+            {pendingReports.length === 0 ? (
+
+              <p style={{ margin: 0, padding: "18px 0", textAlign: "center", color: C.muted, fontSize: 13 }}>
+
+                No pending lab reports.
+
+              </p>
+
+            ) : (
+
+              pendingReports.map((report, i) => (
+
+                <div
+
+                  key={`${report.orderId}-${report.subOrderId}-${i}`}
+
+                  style={{ paddingBottom: 10, borderBottom: i < pendingReports.length - 1 ? `1px solid ${C.secondary}` : "none" }}
+
+                >
+
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
+
+                    <div style={{ minWidth: 0 }}>
+
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text }}>{report.patient}</p>
+
+                      <p style={{ margin: 0, fontSize: 11.5, color: C.muted }}>{report.tests}</p>
+
+                      <p style={{ margin: "2px 0 0", fontSize: 11, color: C.muted }}>
+
+                        {report.orderNumber}{report.scheduledAt ? ` · ${new Date(report.scheduledAt).toLocaleDateString()}` : ""}
+
+                      </p>
+
+                    </div>
+
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: C.secondary, color: C.primaryDark, flexShrink: 0, textTransform: "capitalize" }}>
+
+                      {report.status?.replace("_", " ")}
+
+                    </span>
+
+                  </div>
+
+                </div>
+
+              ))
+
+            )}
+
+          </div>
+
+        </Panel>
+
+        <Panel title="Recent patient activity">
+
+          <div style={{ display: "flex", flexDirection: "column" }}>
+
+            {recentActivity.length === 0 ? (
+
+              <p style={{ margin: 0, padding: "18px 0", textAlign: "center", color: C.muted, fontSize: 13 }}>
+
+                No recent activity yet.
+
+              </p>
+
+            ) : (
+
+              recentActivity.map((item, i) => (
+
+                <div
+
+                  key={item.id || i}
+
+                  style={{ paddingBottom: 10, borderBottom: i < recentActivity.length - 1 ? `1px solid ${C.secondary}` : "none" }}
+
+                >
+
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.text }}>{item.title}</p>
+
+                  <p style={{ margin: 0, fontSize: 11.5, color: C.muted }}>
+
+                    {item.detail} · {new Date(item.time).toLocaleString()}
+
+                  </p>
+
+                </div>
+
+              ))
+
+            )}
+
+          </div>
+
+        </Panel>
 
       </div>
 
@@ -2770,7 +3025,7 @@ function PatientDashboard({ currentUser }) {
 
   console.log('PatientDashboard component mounted');
 
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   console.log('Auth user:', user);
 
@@ -3461,6 +3716,29 @@ function PatientDashboard({ currentUser }) {
 
       </div>
 
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <button
+          onClick={() => logout()}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "10px 16px",
+            borderRadius: 10,
+            border: `1.5px solid ${C.secondary}`,
+            background: C.card,
+            color: C.down,
+            fontFamily: font,
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          <LogOut size={15} />
+          Log out
+        </button>
+      </div>
+
 
 
       {/* Statistics Cards */}
@@ -3504,6 +3782,8 @@ function PatientDashboard({ currentUser }) {
             { icon: ActivityIcon, label: "Add Reading", onClick: () => setShowAddReadingModal(true) },
 
             { icon: UserPlus, label: "Add Family Member", onClick: () => setShowAddFamilyModal(true) },
+
+            { icon: LogOut, label: "Log out", onClick: () => logout() },
 
           ]}
 

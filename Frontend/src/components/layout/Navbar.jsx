@@ -40,12 +40,28 @@ export default function Navbar() {
 
 
 
+  const isProfessionalUser = isAuthenticated && ["doctor", "pharmacy", "laboratory"].includes(user?.role);
+  const dashboardPath = {
+    patient: "/patient/dashboard",
+    doctor: "/doctor/dashboard",
+    laboratory: "/lab/dashboard",
+    pharmacy: "/pharmacy/dashboard",
+    admin: "/admin/dashboard",
+    vendor_owner: "/vendor/dashboard",
+    vendor_staff: "/vendor/dashboard",
+  }[user?.role];
+
+  const displayName = user?.name || [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.email || "Account";
+  const initial = (displayName[0] || "U").toUpperCase();
+
   const navItems = [
     { label: "Home", href: "/", icon: HeartPulse },
-    ...(isAuthenticated ? [{ label: "Dashboard", href: "/patient/dashboard", icon: LayoutDashboard }] : []),
-    { label: "Doctors", href: "/doctors", icon: Activity },
-    { label: "Laboratories", href: "/lab", icon: MessageSquare },
-    { label: "Pharmacy", href: "/pharmacy", icon: Pill },
+    ...(isAuthenticated && dashboardPath ? [{ label: "Dashboard", href: dashboardPath, icon: LayoutDashboard }] : []),
+    ...(!isProfessionalUser ? [
+      { label: "Doctors", href: "/doctors", icon: Activity },
+      { label: "Laboratories", href: "/lab", icon: MessageSquare },
+      { label: "Pharmacy", href: "/pharmacy", icon: Pill },
+    ] : []),
     { label: "Chat Center", href: "/chat-center", icon: MessageSquare },
     // new modules (role-aware)
     ...(isAuthenticated && user?.role === "patient" ? [
@@ -140,7 +156,12 @@ export default function Navbar() {
 
             {isAuthenticated && user ? (
 
-              <DropdownMenu>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={() => logout()} title="Log out">
+                  <LogOut className="h-5 w-5" />
+                </Button>
+
+                <DropdownMenu>
 
                 <DropdownMenuTrigger asChild>
 
@@ -152,7 +173,7 @@ export default function Navbar() {
 
                       <AvatarFallback className="bg-secondary text-primary font-bold">
 
-                        {user.firstName?.[0] || "U"}
+                        {initial}
 
                       </AvatarFallback>
 
@@ -168,7 +189,7 @@ export default function Navbar() {
 
                     <div className="flex flex-col space-y-1">
 
-                      <p className="text-sm font-medium leading-none">{user.firstName} {user.lastName}</p>
+                      <p className="text-sm font-medium leading-none">{displayName}</p>
 
                       <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
 
@@ -188,7 +209,8 @@ export default function Navbar() {
 
                 </DropdownMenuContent>
 
-              </DropdownMenu>
+                </DropdownMenu>
+              </div>
 
             ) : (
 
@@ -272,7 +294,7 @@ export default function Navbar() {
 
                           <AvatarFallback className="bg-secondary text-primary font-bold">
 
-                            {user.firstName?.[0] || "U"}
+                            {initial}
 
                           </AvatarFallback>
 
@@ -280,7 +302,7 @@ export default function Navbar() {
 
                         <div>
 
-                          <p className="font-medium">{user.firstName}</p>
+                          <p className="font-medium">{displayName}</p>
 
                           <p className="text-sm text-muted-foreground">{user.email}</p>
 

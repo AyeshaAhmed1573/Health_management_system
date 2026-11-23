@@ -1,6 +1,7 @@
 import Doctor from '../Models/Doctor.model.js';
 import User from '../Models/User.model.js';
 import multer from 'multer';
+import { emitDoctorDashboardRefresh } from '../socket/socketServer.js';
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -298,6 +299,7 @@ export async function updateDoctorRating(req, res) {
     doctor.rating.count = newCount;
 
     await doctor.save();
+    emitDoctorDashboardRefresh(doctor.userId);
 
     res.status(200).json({
       message: 'Doctor rating updated successfully',

@@ -40,6 +40,10 @@ const appointmentSchema = new mongoose.Schema(
     reminder24hSent: { type: Boolean, default: false },
     reminder1hSent: { type: Boolean, default: false },
     consultationNotes: { type: String },          // doctor fills after appointment
+    conversationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'AppointmentConversation',
+    },
     fee: { type: Number },
     paymentStatus: {
       type: String,
@@ -63,5 +67,6 @@ appointmentSchema.index(
 );
 appointmentSchema.index({ profileId: 1, slotTime: -1 });
 appointmentSchema.index({ userId: 1, status: 1 });
+appointmentSchema.index({ conversationId: 1 }, { unique: true, sparse: true });
 
 export default mongoose.model('Appointment', appointmentSchema);

@@ -15,6 +15,7 @@ import authRoutes from './Routes/Auth.routes.js';
 import chatbotRoutes from './Routes/chatbotRoutes.js';
 import userRoutes from './Routes/User.routes.js';
 import doctorRoutes from './Routes/Doctor.routes.js';
+import doctorDashboardRoutes from './Routes/DoctorDashboard.routes.js';
 import patientRoutes from './Routes/Patient.routes.js';
 import laboratoryRoutes from './Routes/Laboratory.routes.js';
 import pharmacyRoutes from './Routes/Pharmacy.routes.js';
@@ -87,6 +88,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/chatbot/sessions', chatbotRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/doctors', doctorRoutes);
+app.use('/api/doctor-dashboard', doctorDashboardRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/profiles', patientRoutes); // Alias for patients/profiles endpoints
 app.use('/api/laboratories', laboratoryRoutes);

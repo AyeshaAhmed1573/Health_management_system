@@ -5,6 +5,7 @@ import Pharmacy from '../Models/Pharmacy.model.js';
 import { authorizeProfileAccess, getUserId } from '../utils/access.js';
 import { notify } from '../Services/notificationService.js';
 import { createAuditLog } from '../Services/auditLogService.js';
+import { emitDoctorDashboardRefresh } from '../socket/socketServer.js';
 
 const fail = (res, status, error) => res.status(status).json({ success: false, error });
 const audit = (req, action, rx, extra = {}) =>
@@ -29,6 +30,7 @@ export async function createPrescription(req, res) {
       notify(appt.userId, { type: 'prescription_issued', title: 'New prescription', message: 'Your doctor has issued a prescription.', refModel: 'Prescription', refId: rx._id, email: true }),
       audit(req, 'prescription_issued', rx),
     ]);
+    emitDoctorDashboardRefresh(getUserId(req));
     res.status(201).json({ success: true, prescription: rx });
   } catch (err) {
     fail(res, err.name === 'ValidationError' ? 400 : 500, err.message);

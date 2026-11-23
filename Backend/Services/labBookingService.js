@@ -1,6 +1,7 @@
 import Order from '../Models/Order.model.js';
 import Slot from '../Models/Slot.model.js';
 import AuditLog from '../Models/AuditLog.model.js';
+import { emitProfileDashboardRefresh } from '../socket/socketServer.js';
 
 // Get lab bookings for vendor
 export async function getLabBookings(vendorId, filters = {}, page = 1, limit = 20) {
@@ -125,6 +126,7 @@ export async function updateBookingStatus(orderId, subOrderId, vendorId, newStat
   }
 
   await order.save();
+  emitProfileDashboardRefresh(order.profileId);
 
   await AuditLog.create({
     userId: updaterId,
@@ -171,6 +173,7 @@ export async function uploadReport(orderId, subOrderId, vendorId, reportData, up
   }
 
   await order.save();
+  emitProfileDashboardRefresh(order.profileId);
 
   await AuditLog.create({
     userId: uploaderId,

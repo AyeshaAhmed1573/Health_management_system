@@ -402,6 +402,19 @@ export const appointmentsApi = {
   setAvailability: (availableSlots) => request('PUT', '/appointments/doctor/availability', { availableSlots }),
 };
 
+// Appointment-based patient/doctor chat
+export const appointmentChatApi = {
+  get: (appointmentId) => request('GET', `/appointments/${appointmentId}/chat`),
+  sendMessage: (appointmentId, text) => request('POST', `/appointments/${appointmentId}/chat/messages`, { text }),
+  markRead: (appointmentId) => request('POST', `/appointments/${appointmentId}/chat/read`),
+  unreadCounts: () => request('GET', '/appointments/chat/unread-counts'),
+};
+
+// Doctor dashboard aggregates
+export const doctorDashboardApi = {
+  overview: () => request('GET', '/doctor-dashboard/overview'),
+};
+
 // Prescriptions
 export const prescriptionsApi = {
   create: (payload) => request('POST', '/prescriptions', payload),

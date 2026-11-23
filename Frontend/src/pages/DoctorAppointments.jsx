@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { appointmentsApi } from "@/lib/api";
 import StatusBadge from "@/components/appointments/StatusBadge";
+import AppointmentChatDialog from "@/components/appointments/AppointmentChatDialog";
 import PrescriptionForm from "@/components/appointments/PrescriptionForm";
 import AvailabilityEditor from "@/components/appointments/AvailabilityEditor";
-import { Stethoscope, Video } from "lucide-react";
+import { getSocket } from "@/lib/socket";
+import { Stethoscope, Video, MessageCircle } from "lucide-react";
 
 const FILTERS = ["all", "pending", "confirmed", "completed"];
 const fmt = (iso) => new Date(iso).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
@@ -19,6 +21,7 @@ export default function DoctorAppointments() {
   const [error, setError] = useState("");
   const [rxFor, setRxFor] = useState(null);
   const [notes, setNotes] = useState({});
+  const [chatFor, setChatFor] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -31,6 +34,18 @@ export default function DoctorAppointments() {
     finally { setLoading(false); }
   }, [filter]);
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+    const onUnread = ({ appointmentId, conversationId, unreadCount } = {}) => {
+      setItems((prev) => prev.map((a) => String(a._id) === String(appointmentId)
+        ? { ...a, chat: { ...(a.chat || {}), conversationId: conversationId || a.chat?.conversationId, unreadCount } }
+        : a));
+    };
+    socket.on("conversation:unread", onUnread);
+    return () => socket.off("conversation:unread", onUnread);
+  }, []);
 
   const act = async (fn, okMsg) => {
     try { await fn(); toast({ title: okMsg }); load(); }
@@ -59,7 +74,25 @@ export default function DoctorAppointments() {
                       <p className="font-bold">{a.profileId?.name} <span className="font-normal text-muted-foreground">({a.profileId?.relationship})</span></p>
                       <p className="text-sm text-muted-foreground">{fmt(a.slotTime)} · {a.type === "online" ? "Online" : "In person"}{a.reason ? ` · ${a.reason}` : ""}</p>
                     </div>
-                    <StatusBadge status={a.status} />
+                    <div className="flex items-center gap-2">
+                      {a.chat && (
+                        <button
+                          type="button"
+                          onClick={() => setChatFor(a)}
+                          className="relative rounded-xl border p-2 hover:bg-secondary"
+                          title="Open chat"
+                          aria-label="Open appointment chat"
+                        >
+                          <MessageCircle className="w-4 h-4 text-primary" />
+                          {a.chat.unreadCount > 0 && (
+                            <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                              {a.chat.unreadCount}
+                            </span>
+                          )}
+                        </button>
+                      )}
+                      <StatusBadge status={a.status} />
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap gap-2">
@@ -89,6 +122,7 @@ export default function DoctorAppointments() {
           )}
       </div>
       {rxFor && <PrescriptionForm appointment={rxFor} onClose={() => setRxFor(null)} onSaved={load} />}
+      <AppointmentChatDialog appointment={chatFor} open={Boolean(chatFor)} onOpenChange={(nextOpen) => { if (!nextOpen) setChatFor(null); }} />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { API_BASE, getStoredSession, saveSession, clearSession } from './session';
+import { disconnectSocket } from './socket';
 import TwoFactorDialog from '@/components/auth/TwoFactorDialog';
 
 const AuthContext = createContext(null);
@@ -116,9 +117,12 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
+    const shouldReturnHome = ['doctor', 'patient'].includes(user?.role);
+    disconnectSocket();
     clearSession();
     setToken(null);
     setUser(null);
+    if (shouldReturnHome) window.location.href = '/';
   };
 
   const value = {

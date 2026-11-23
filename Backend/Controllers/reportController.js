@@ -7,6 +7,7 @@ import fs from 'fs';
 import PatientProfile from '../Models/PatientProfile.model.js';
 import HealthReading from '../Models/HealthReading.model.js';
 import { analyzeReportFile, loadReportFile, buildHealthInsights } from '../Services/reportFileAnalysis.js';
+import { emitProfileDashboardRefresh } from '../socket/socketServer.js';
 
 // Reads the stored file with Gemini and returns fields to merge into a report; never throws.
 async function aiFieldsFromFile(source, category, title) {
@@ -148,6 +149,7 @@ export async function uploadReport(req, res) {
       console.log('Saving report to database...');
       await report.save();
       console.log('Report saved successfully:', report._id);
+      emitProfileDashboardRefresh(profileId);
 
       res.status(201).json({
         success: true,
@@ -258,6 +260,7 @@ export async function uploadReport(req, res) {
       });
 
       await report.save();
+      emitProfileDashboardRefresh(profileId);
 
       res.status(201).json({
         success: true,
@@ -390,6 +393,7 @@ export async function deleteReport(req, res) {
     }
 
     await MedicalReport.findByIdAndDelete(reportId);
+    emitProfileDashboardRefresh(report.profileId);
 
     res.status(200).json({
       success: true,
@@ -445,6 +449,7 @@ export async function reanalyzeReport(req, res) {
     }
 
     await report.save();
+    emitProfileDashboardRefresh(report.profileId);
 
     res.status(200).json({
       success: true,
@@ -476,6 +481,7 @@ export async function updateReportValues(req, res) {
     report.needsManualReview = false; // Clear the review flag after manual edit
 
     await report.save();
+    emitProfileDashboardRefresh(report.profileId);
 
     res.status(200).json({
       success: true,

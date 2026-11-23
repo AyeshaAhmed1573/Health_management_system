@@ -4,8 +4,10 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { appointmentsApi } from "@/lib/api";
 import StatusBadge from "@/components/appointments/StatusBadge";
+import AppointmentChatDialog from "@/components/appointments/AppointmentChatDialog";
 import PayButton from "@/components/payments/PayButton";
-import { CalendarCheck, Video, MapPin } from "lucide-react";
+import { getSocket } from "@/lib/socket";
+import { CalendarCheck, Video, MapPin, MessageCircle } from "lucide-react";
 
 const FILTERS = ["all", "pending", "confirmed", "completed", "cancelled"];
 const fmt = (iso) => new Date(iso).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
@@ -16,6 +18,7 @@ export default function Appointments() {
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [chatFor, setChatFor] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -27,6 +30,18 @@ export default function Appointments() {
     finally { setLoading(false); }
   }, [filter]);
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+    const onUnread = ({ appointmentId, conversationId, unreadCount } = {}) => {
+      setItems((prev) => prev.map((a) => String(a._id) === String(appointmentId)
+        ? { ...a, chat: { ...(a.chat || {}), conversationId: conversationId || a.chat?.conversationId, unreadCount } }
+        : a));
+    };
+    socket.on("conversation:unread", onUnread);
+    return () => socket.off("conversation:unread", onUnread);
+  }, []);
 
   const cancel = async (a) => {
     if (!window.confirm("Cancel this appointment?")) return;
@@ -57,7 +72,25 @@ export default function Appointments() {
                       <p className="font-bold">Dr. {a.doctorId?.userId?.name || "Doctor"} <span className="font-normal text-muted-foreground">· {a.doctorId?.specialization}</span></p>
                       <p className="text-sm text-muted-foreground">For {a.profileId?.name} · {fmt(a.slotTime)}</p>
                     </div>
-                    <StatusBadge status={a.status} />
+                    <div className="flex items-center gap-2">
+                      {a.chat && (
+                        <button
+                          type="button"
+                          onClick={() => setChatFor(a)}
+                          className="relative rounded-xl border p-2 hover:bg-secondary"
+                          title="Open chat"
+                          aria-label="Open appointment chat"
+                        >
+                          <MessageCircle className="w-4 h-4 text-primary" />
+                          {a.chat.unreadCount > 0 && (
+                            <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                              {a.chat.unreadCount}
+                            </span>
+                          )}
+                        </button>
+                      )}
+                      <StatusBadge status={a.status} />
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     {a.type === "online" ? <Video className="w-4 h-4 text-primary" /> : <MapPin className="w-4 h-4 text-primary" />}
@@ -81,6 +114,7 @@ export default function Appointments() {
             </div>
           )}
       </div>
+      <AppointmentChatDialog appointment={chatFor} open={Boolean(chatFor)} onOpenChange={(nextOpen) => { if (!nextOpen) setChatFor(null); }} />
     </div>
   );
 }

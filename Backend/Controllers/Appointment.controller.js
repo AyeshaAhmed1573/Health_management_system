@@ -6,6 +6,8 @@ import { localParts, toMinutes, zonedDateTime, weekdayOf } from '../utils/time.j
 import { notify } from '../Services/notificationService.js';
 import { createAuditLog } from '../Services/auditLogService.js';
 import { effectiveSlots, validateSlots } from '../utils/availability.js';
+import { attachChatInfo, ensureAppointmentConversation } from '../Services/appointmentChatService.js';
+import { emitDoctorDashboardRefresh } from '../socket/socketServer.js';
 
 const fail = (res, status, error) => res.status(status).json({ success: false, error });
 const audit = (req, action, appt, extra = {}) =>
@@ -71,6 +73,7 @@ export async function bookAppointment(req, res) {
       }),
       audit(req, 'appointment_booked', appointment),
     ]);
+    emitDoctorDashboardRefresh(doctor.userId);
     res.status(201).json({ success: true, appointment });
   } catch (err) {
     fail(res, 500, err.message);
@@ -118,7 +121,10 @@ export async function getMyAppointments(req, res) {
     const filter = { userId: getUserId(req) };
     if (req.query.status) filter.status = req.query.status;
     if (req.query.profileId) filter.profileId = req.query.profileId;
-    const appointments = await populateAppt(Appointment.find(filter).sort({ slotTime: -1 }));
+    const appointments = await attachChatInfo(
+      await populateAppt(Appointment.find(filter).sort({ slotTime: -1 })),
+      getUserId(req)
+    );
     res.json({ success: true, appointments });
   } catch (err) {
     fail(res, 500, err.message);
@@ -135,7 +141,10 @@ export async function getDoctorAppointments(req, res) {
     if (/^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '')) {
       filter.slotTime = { $gte: zonedDateTime(req.query.date, '00:00'), $lt: new Date(zonedDateTime(req.query.date, '00:00').getTime() + 864e5) };
     }
-    const appointments = await populateAppt(Appointment.find(filter).sort({ slotTime: 1 }));
+    const appointments = await attachChatInfo(
+      await populateAppt(Appointment.find(filter).sort({ slotTime: 1 })),
+      getUserId(req)
+    );
     res.json({ success: true, appointments });
   } catch (err) {
     fail(res, 500, err.message);
@@ -195,6 +204,17 @@ export async function updateAppointmentStatus(req, res) {
     }
     appt.status = status;
     await appt.save();
+
+    if (status === 'confirmed' && previous !== 'confirmed') {
+      try {
+        await ensureAppointmentConversation(appt);
+      } catch (chatErr) {
+        console.error('Failed to create appointment chat:', chatErr);
+      }
+    }
+
+    const doctorUser = await Doctor.findById(appt.doctorId).select('userId').lean();
+    emitDoctorDashboardRefresh(doctorUser?.userId);
 
     const notifyOwner = status !== 'cancelled' || appt.cancelledBy !== 'patient';
     const typeMap = { confirmed: 'appointment_confirmed', cancelled: 'appointment_cancelled' };
